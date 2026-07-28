@@ -1,0 +1,42 @@
+# Portfolio-wide security scan: CodeQL (SAST) + TruffleHog (secrets).
+#
+# The scan itself lives in SecurityMindedSolutions/shared-workflows. This file
+# is only the caller: it decides WHEN this repo scans and WHICH languages.
+# To change what the scan DOES, open a PR there and advance the `v1` tag.
+#
+# Cadence: TIER D. See the tier table in shared-workflows/README.md.
+#
+# Replaces the previous `secret-scan.yml` and the CodeQL "default setup" that
+# was disabled org-wide on 2026-07-28 after it consumed the org's entire
+# 3,000-minute monthly Actions allowance in six days.
+#
+# NOTE: PR runs are diff-informed (CodeQL reports only within changed lines).
+# The scheduled run is the full scan. A green PR does not mean the repo is clean.
+
+name: Security Scan
+
+on:
+  # Weekly, Monday 16:30 UTC. Public repo: Actions minutes are free here.
+  schedule:
+    - cron: '30 16 * * 1'
+  pull_request:
+  workflow_dispatch: {}
+
+# A re-push supersedes an in-flight run instead of billing both. This belongs in
+# the caller, not the reusable workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    # @v1, never @main - a change in shared-workflows reaches this repo only
+    # when the tag is deliberately advanced.
+    uses: SecurityMindedSolutions/shared-workflows/.github/workflows/security-scan.yml@v1
+    # Required: a reusable workflow cannot grant itself more than its caller.
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    with:
+      codeql-languages: actions

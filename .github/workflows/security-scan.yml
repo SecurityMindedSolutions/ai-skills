@@ -1,42 +1,70 @@
-# Portfolio-wide security scan: CodeQL (SAST) + TruffleHog (secrets).
+# Security scan: CodeQL (SAST) + TruffleHog (secrets).
 #
-# The scan itself lives in SecurityMindedSolutions/shared-workflows. This file
-# is only the caller: it decides WHEN this repo scans and WHICH languages.
-# To change what the scan DOES, open a PR there and advance the `v1` tag.
+# SELF-CONTAINED BY NECESSITY. Every private repo in this org calls the shared
+# reusable workflow at SecurityMindedSolutions/shared-workflows@v1. This repo
+# cannot: a PUBLIC repository may not call a reusable workflow stored in a
+# PRIVATE repository, regardless of the org-level Actions access setting. The
+# run fails at workflow-resolution time with no job, no log and no annotation.
 #
-# Cadence: TIER D. See the tier table in shared-workflows/README.md.
+# So this file inlines the same scan. Keep it in sync with shared-workflows'
+# security-scan.yml when that changes. The duplication is cheap here and the
+# alternative (making shared-workflows public) would expose the org's internal
+# cost and security-posture notes.
 #
-# Replaces the previous `secret-scan.yml` and the CodeQL "default setup" that
-# was disabled org-wide on 2026-07-28 after it consumed the org's entire
-# 3,000-minute monthly Actions allowance in six days.
+# Cadence: TIER D (weekly + PR). Public repos do NOT consume Actions minutes,
+# so frequency here is not a budget question.
+#
+# ONE JOB, ON PURPOSE: GitHub bills a minimum of one minute per job. That costs
+# nothing on a public repo, but the shape is kept identical to the private
+# repos so the two do not drift.
 #
 # NOTE: PR runs are diff-informed (CodeQL reports only within changed lines).
-# The scheduled run is the full scan. A green PR does not mean the repo is clean.
+# The scheduled run is the full scan.
 
 name: Security Scan
 
 on:
-  # Weekly, Monday 16:30 UTC. Public repo: Actions minutes are free here.
+  # Weekly, Monday 16:30 UTC.
   schedule:
     - cron: '30 16 * * 1'
   pull_request:
   workflow_dispatch: {}
 
-# A re-push supersedes an in-flight run instead of billing both. This belongs in
-# the caller, not the reusable workflow.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   scan:
-    # @v1, never @main - a change in shared-workflows reaches this repo only
-    # when the tag is deliberately advanced.
-    uses: SecurityMindedSolutions/shared-workflows/.github/workflows/security-scan.yml@v1
-    # Required: a reusable workflow cannot grant itself more than its caller.
+    name: Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       actions: read
       contents: read
-    with:
-      codeql-languages: actions
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # On pull_request TruffleHog auto-diffs base...head; on schedule it
+          # walks full history. One setting, both behaviours.
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e58424170fb0262c8d7ed60a2e84b9bffe205c67 # codeql-bundle-v2.26.1
+        with:
+          languages: actions
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@e58424170fb0262c8d7ed60a2e84b9bffe205c67 # codeql-bundle-v2.26.1
+
+      - name: TruffleHog OSS
+        if: ${{ !cancelled() }}
+        uses: trufflesecurity/trufflehog@30d5bb91af1a771378349dbbb0c82129392acf70 # v3.95.6
+        with:
+          path: ./
+          extra_args: --only-verified

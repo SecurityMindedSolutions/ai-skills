@@ -1,12 +1,13 @@
-# Claude Skills for IT and Security
+# AI Skills
 
-A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills
-for the work IT and security practitioners actually do: auditing a codebase you
-inherited, clearing a vulnerability backlog, and handing a long implementation to an
-agent that can run it unattended.
+Skills that let a coding agent do real work on a codebase: audit one you inherited,
+clear a vulnerability backlog, or take a long implementation and run it unattended.
 
-Each skill is a directory containing a `SKILL.md` and whatever modules, templates or
-scripts it needs. Point them at any codebase.
+Each skill is a directory holding a `SKILL.md` and whatever modules, templates or
+scripts it needs. They are written for [Claude
+Code](https://docs.anthropic.com/en/docs/claude-code) today, and the format is plain
+markdown plus shell, so most of it ports to any agent that can read instructions and
+run tools.
 
 ## Skills
 
@@ -29,14 +30,14 @@ sound.
 Copy the skills you want into your Claude Code skills directory:
 
 ```bash
-git clone https://github.com/SecurityMindedSolutions/claude-it-security-tool-skills.git
-cp -R claude-it-security-tool-skills/skills/auditing/audit-security ~/.claude/skills/
+git clone https://github.com/SecurityMindedSolutions/ai-skills.git
+cp -R ai-skills/skills/auditing/audit-security ~/.claude/skills/
 ```
 
 Or symlink, so a `git pull` updates the skill in place:
 
 ```bash
-ln -s "$PWD/claude-it-security-tool-skills/skills/auditing/audit-security" ~/.claude/skills/audit-security
+ln -s "$PWD/ai-skills/skills/auditing/audit-security" ~/.claude/skills/audit-security
 ```
 
 A skill lives at the directory named in the table above. Copy the whole directory,

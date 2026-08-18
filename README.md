@@ -19,6 +19,7 @@ run tools.
 | [GitHub vulnerability remediation](skills/vulnerability-management/github-remediate-vulns/) | `/github-remediate-vulns` | Scans a GitHub org for Dependabot, code scanning and secret scanning alerts, then fixes what it safely can and reports the rest |
 | [Ralph plan](skills/autonomous-development/ralph-plan/) | `/ralph-plan` | Interactive builder for a PRD with checkboxed tasks and acceptance criteria |
 | [Ralph loop](skills/autonomous-development/ralph-loop/) | `/ralph-loop` | Autonomous runner that works through that PRD one task at a time, no human in the loop |
+| [Built-With](skills/reconnaissance/built-with/) | `/built-with` | Passive, headless recon of a web app's frontend - maps its third-party vendors, backend hosts and API surface from public JS, into a plain-English dossier |
 
 The three audit skills dispatch parallel sub-agents and consolidate their findings
 into one report. They overlap deliberately: the security audit asks whether something
@@ -53,7 +54,8 @@ options and prerequisites.
 skills/
 ├── auditing/                        codebase review, one skill per layer
 ├── vulnerability-management/        finding and fixing known vulns
-└── autonomous-development/          planning and running unattended work
+├── autonomous-development/          planning and running unattended work
+└── reconnaissance/                  passive recon of a live web app's stack
 ```
 
 ## Previously

@@ -11,20 +11,47 @@ run tools.
 
 ## Skills
 
+Grouped by category, matching the folders under [`skills/`](skills/).
+
+### Auditing
+
+`skills/auditing/` - codebase review, one skill per layer.
+
 | Skill | Command | What it does |
 |---|---|---|
 | [Security audit](skills/auditing/audit-security/) | `/audit-security` | Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD |
 | [Frontend audit](skills/auditing/audit-frontend/) | `/audit-frontend` | Reviews client-side architecture: design tokens, components, accessibility, performance, SEO |
 | [Backend audit](skills/auditing/audit-backend/) | `/audit-backend` | Reviews server-side patterns: handler hygiene, service layers, data access, error handling, observability |
-| [GitHub vulnerability remediation](skills/vulnerability-management/github-remediate-vulns/) | `/github-remediate-vulns` | Scans a GitHub org for Dependabot, code scanning and secret scanning alerts, then fixes what it safely can and reports the rest |
-| [Ralph plan](skills/autonomous-development/ralph-plan/) | `/ralph-plan` | Interactive builder for a PRD with checkboxed tasks and acceptance criteria |
-| [Ralph loop](skills/autonomous-development/ralph-loop/) | `/ralph-loop` | Autonomous runner that works through that PRD one task at a time, no human in the loop |
-| [Built-With](skills/reconnaissance/built-with/) | `/built-with` | Passive, headless recon of a web app's frontend - maps its third-party vendors, backend hosts and API surface from public JS, into a plain-English dossier |
 
 The three audit skills dispatch parallel sub-agents and consolidate their findings
 into one report. They overlap deliberately: the security audit asks whether something
 is *exploitable*, while the frontend and backend audits ask whether the *pattern* is
 sound.
+
+### Vulnerability management
+
+`skills/vulnerability-management/` - finding and fixing known vulns.
+
+| Skill | Command | What it does |
+|---|---|---|
+| [GitHub vulnerability remediation](skills/vulnerability-management/github-remediate-vulns/) | `/github-remediate-vulns` | Scans a GitHub org for Dependabot, code scanning and secret scanning alerts, then fixes what it safely can and reports the rest |
+
+### Autonomous development
+
+`skills/autonomous-development/` - planning and running unattended work.
+
+| Skill | Command | What it does |
+|---|---|---|
+| [Ralph plan](skills/autonomous-development/ralph-plan/) | `/ralph-plan` | Interactive builder for a PRD with checkboxed tasks and acceptance criteria |
+| [Ralph loop](skills/autonomous-development/ralph-loop/) | `/ralph-loop` | Autonomous runner that works through that PRD one task at a time, no human in the loop |
+
+### Reconnaissance
+
+`skills/reconnaissance/` - passive recon of a live web app's stack.
+
+| Skill | Command | What it does |
+|---|---|---|
+| [Built-With](skills/reconnaissance/built-with/) | `/built-with` | Passive, headless recon of a web app's frontend - maps its third-party vendors, backend hosts and API surface from public JS, into a plain-English dossier |
 
 ## Install
 
@@ -41,7 +68,7 @@ Or symlink, so a `git pull` updates the skill in place:
 ln -s "$PWD/ai-skills/skills/auditing/audit-security" ~/.claude/skills/audit-security
 ```
 
-A skill lives at the directory named in the table above. Copy the whole directory,
+A skill lives at the directory named in its category table above. Copy the whole directory,
 not just its `SKILL.md` - the audit skills keep their checks in `modules/`, and the
 Ralph loop ships `ralph.sh` alongside its templates.
 

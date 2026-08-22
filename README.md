@@ -1,7 +1,8 @@
 # AI Skills
 
 Skills that let a coding agent do real work on a codebase: audit one you inherited,
-clear a vulnerability backlog, or take a long implementation and run it unattended.
+clear a vulnerability backlog, take a long implementation and run it unattended, or
+say what it found in language the reader can actually use.
 
 Each skill is a directory holding a `SKILL.md` and whatever modules, templates or
 scripts it needs. They are written for [Claude
@@ -53,6 +54,20 @@ sound.
 |---|---|---|
 | [Built-With](skills/reconnaissance/built-with/) | `/built-with` | Passive, headless recon of a web app's frontend - maps its third-party vendors, backend hosts and API surface from public JS, into a plain-English dossier |
 
+### Communication
+
+`skills/communication/` - restating what the agent just said, for a different reader.
+
+| Skill | Command | What it does |
+|---|---|---|
+| [Again](skills/communication/again/) | `/again` | Restates the last message in plain English, keeping every path, line number and count exactly as written |
+| [Elim](skills/communication/elim/) | `/elim` | Restates the last message for a manager: no code names, no shop talk, and no invented urgency |
+
+These two are a pair, and they disagree about one thing: whether the reader needs the
+names. `/again` keeps every identifier because the reader is going to open those
+files. `/elim` drops them all because the reader is not. Neither adds anything the
+source did not say.
+
 ## Install
 
 Copy the skills you want into your Claude Code skills directory:
@@ -82,7 +97,8 @@ skills/
 ├── auditing/                        codebase review, one skill per layer
 ├── vulnerability-management/        finding and fixing known vulns
 ├── autonomous-development/          planning and running unattended work
-└── reconnaissance/                  passive recon of a live web app's stack
+├── reconnaissance/                  passive recon of a live web app's stack
+└── communication/                   restating a message for a different reader
 ```
 
 ## Previously

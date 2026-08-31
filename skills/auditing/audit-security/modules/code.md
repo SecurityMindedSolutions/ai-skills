@@ -51,6 +51,15 @@ Review application code for security vulnerabilities. Focus on real exploitable 
 - Blocklist-based URL validation (bypassable with encoding tricks)
 - Missing DNS resolution checks before outbound requests
 - Redirect following that could reach internal services
+- **Proxy/forwarder endpoints that build an outbound URL by string-concatenating a "path" or "forward" query param onto a fixed base host** (any language/HTTP client — this is a language-agnostic pattern, not just Python `requests`/`urllib`): `${BASE_HOST}${param}`, `baseUrl + req.query.path`, `new URL(param, base)` whose result is used without asserting `.host`/`.origin` still equals the intended host afterward. This is a common shape for logging/telemetry/webhook proxy endpoints (e.g. a browser-SDK log-forwarding proxy) and is exploitable via URL userinfo/authority injection (`@evil.com`, `//evil.com`) even when the param is nominally "just a path" — see the SSRF false-positive rule for how to tell a real path-only case from this.
+
+### 6b. Server-Side Proxy / Forwarder Endpoints (dedicated check — do not skip)
+<!-- Standards: OWASP-API7:2023, CWE-918 -->
+Any endpoint whose entire job is to forward/proxy a request to a fixed third-party or internal destination (log ingestion proxies, webhook relays, image/file proxies, "fetch this URL for me" endpoints) deserves a specific, deliberate check, separate from generic SSRF pattern-grepping:
+1. Find the line that constructs the outbound URL. Is the destination host ever derived, even partially, from caller input (query param, header, body field)?
+2. If yes: is the caller-supplied piece validated as a strict path (leading `/`, no `@`/`//`/backslash/scheme) via real parsing (e.g. `new URL(path, base)` + host-equality assertion), or is it just concatenated/templated into the base URL string? Concatenation without that validation is exploitable regardless of what the field is named or what the framework/SDK's own docs say its "intended" shape is.
+3. Trace what the resulting request method is limited to (e.g., hardcoded `POST`) — this bounds which internal routes are reachable if the SSRF pivots inward, and is worth noting in the exploit scenario.
+4. Explicitly reason about pivot potential: could the forwarder be redirected at an internal-only hostname/IP (cluster-internal service, cloud metadata endpoint `169.254.169.254`, a private CIDR)? If the endpoint is itself internet-facing, this turns an internal-only weakness elsewhere into an internet-reachable one — flag that chain explicitly and let it drive severity up, even if you haven't verified the internal target is itself vulnerable.
 
 ### 7. File Operations
 <!-- Standards: CWE-22 -->
@@ -126,8 +135,18 @@ import random|random\.choice|random\.randint|random\.random|hashlib\.md5|hashlib
 # Information disclosure
 str\(e\)|traceback\.print_exc|traceback\.format_exc.*return|debug=True
 
-# SSRF
+# SSRF (Python)
 requests\.(get|post|put|delete)\(.*variable|urllib\.request\.urlopen
+
+# SSRF (Node/TS) — outbound HTTP clients fed a built-up URL
+axios\.(get|post|put|delete|patch)\(|fetch\(|http\.request\(|https\.request\(
+
+# SSRF (Go/Java/Ruby/other) — outbound HTTP clients, check the URL argument's provenance
+http\.Get\(|http\.Post\(|HttpClient|Net::HTTP|RestTemplate|WebClient
+
+# SSRF — the URL-construction pattern itself, independent of client/language (grep the sink's URL argument backwards to find one of these)
+\$\{[A-Za-z_]*HOST[A-Za-z_]*\}\$\{|\+\s*req\.(query|params|body)|new URL\(.*,\s*(req\.|param|input)
+forward.*param|proxy.*url.*param|targetUrl\s*=
 
 # Deserialization
 pickle\.loads|yaml\.load\b(?!.*Loader)|marshal\.loads

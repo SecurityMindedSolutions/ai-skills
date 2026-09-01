@@ -16,6 +16,36 @@ Comprehensive security audit that dispatches parallel sub-agents across security
 
 Each module includes false-positive suppression rules (e.g., test files, React auto-escaping, env vars as trusted input) and confidence scoring to reduce noise.
 
+## Trace validation
+
+Every finding must carry a **Trace**: the walked path that proves the defect is reachable, defined
+in [`references/trace-protocol.md`](./references/trace-protocol.md) and applied identically by all
+modules.
+
+Pattern matching finds candidate lines. Most false positives are real code on an *unreachable*
+path — a dangerous sink whose input is constrained upstream, a missing guard on a route nothing
+routes to, an over-broad permission on an identity nothing assumes, a vulnerable package that never
+loads. Those look identical to true positives at the line level, so the skill treats walking the
+path as a **gate** rather than as documentation:
+
+- **Three trace shapes** cover every finding type: *dataflow* (untrusted source → sink), *reachability*
+  (weakest principal → capability), and *control-failure* (a control that exists but cannot do its
+  job — fail-open defaults, guards applied to the wrong object, checks that cannot fail).
+- **Every hop cites `file:line`** and is marked `[verified]` (read directly), `[inferred]` (derived
+  from something read), `[assumed]` (not checkable), or `[boundary]` (path left the available code).
+- **Confidence is derived from the weakest marker**, not scored by impression. All hops verified →
+  HIGH; anything assumed or out of scope on the auth/reachability segment → capped at MEDIUM.
+- **A mandatory `Breaks if:` line** names the control that would refute the finding and where it was
+  confirmed absent. A candidate whose chain breaks under that check is *dropped*, not downgraded,
+  and is recorded under **Verified Clean** so future runs don't re-derive it.
+
+**Cross-repository tracing.** When a path leaves the target tree — into a sibling repo, shared
+library, or companion service — pass those roots with `--trace-scope` and they become readable for
+tracing (they are still never scanned for findings of their own). Without them the hop is marked
+`[boundary]`, the assumption made about it is stated in the weakening direction, confidence is
+capped, and the report's **Trace Coverage** section names what was missing — so a low-confidence
+finding caused by absent code is distinguishable from one caused by weak evidence.
+
 ## Usage
 
 ```
@@ -25,6 +55,7 @@ Each module includes false-positive suppression rules (e.g., test files, React a
 /audit-security all ./src                    # All modules, specific path
 /audit-security terraform ./infra            # One module, specific path
 /audit-security --include-low                # Include low-confidence findings
+/audit-security api ./svc --trace-scope ../shared-lib,../gateway   # Follow call paths into sibling repos
 /audit-security code ./src --include-low     # Combine all options
 ```
 

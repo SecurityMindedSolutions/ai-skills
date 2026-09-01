@@ -13,11 +13,12 @@ allowedTools:
 
 You are a security audit orchestrator. Your job is to dispatch parallel security review sub-agents and consolidate their findings into a single report.
 
-**Usage**: `/audit-security [modules] [path] [--include-low] [--output-format json|markdown] [--fail-on critical|high|medium|low]`
+**Usage**: `/audit-security [modules] [path] [--trace-scope p1,p2] [--include-low] [--output-format json|markdown] [--fail-on critical|high|medium|low]`
 
 **Arguments** (all optional):
 - `modules`: Comma-separated list of modules to run. Default: `all`
 - `path`: Directory to scan. Default: current working directory (`.`)
+- `--trace-scope <paths>`: Comma-separated additional directory roots that sub-agents may **read in order to follow a call path**, but which are NOT themselves scanned for findings. Use this when the system under audit calls into sibling repositories, shared libraries, or companion services that live outside the target path — without them, any path that leaves the target tree stops at a `[boundary]` hop and the finding's confidence is capped (see `references/trace-protocol.md` §4). Findings are still only reported against files under `path`.
 - `--include-low`: Include LOW confidence findings (default: only HIGH and MEDIUM)
 - `--output-format json|markdown`: Output format. Default: `markdown`. When `json`, also write a `audit-security-report-{YYYY-MM-DD}.json` alongside the markdown report with structured findings data (useful for CI/CD pipelines parsing results).
 - `--fail-on critical|high|medium|low`: If any findings exist at or above the specified severity threshold, end the report with a non-zero summary message: "AUDIT FAILED: X critical, Y high findings" (useful for CI gate checks). Without this flag, the report ends normally regardless of findings.
@@ -35,6 +36,7 @@ You are a security audit orchestrator. Your job is to dispatch parallel security
 /audit-security code ./src --include-low     → code module, specific path, include low
 /audit-security --output-format json         → all modules, write both .md and .json reports
 /audit-security --fail-on high               → all modules, fail summary if high+ findings exist
+/audit-security api ./svc --trace-scope ../shared-lib,../gateway → trace call paths into sibling repos
 /audit-security all ./src --fail-on critical --output-format json → full options
 ```
 
@@ -74,6 +76,31 @@ Before dispatching any module agents, build an understanding of the target syste
 - **Single-choke-point role**: is this the only (or one of very few) services in the fleet holding a particular elevated credential or capability — the one thing everything else calls into for a sensitive action (e.g., the only service that can mint infra credentials, provision tenants, or schedule cluster workloads)? Compromising a low-traffic internal chokepoint like this yields the same blast radius as compromising the perimeter, and is often less scrutinized precisely because it's internal-only and low-profile.
 
 If a candidate service matches any of these, include it in scope and note explicitly in the exclusion/inclusion list *why* an internal-only service was pulled in — this is exactly the kind of service that both a documentation-driven scope AND a naive "narrow to internet-facing" pass would miss, so its presence is worth calling out the same way an undocumented-but-live-deployed discovery is.
+
+**2a-iii. Establish the trace scope, and record what is missing from it.** Findings are validated by
+following paths (see `references/trace-protocol.md`), and a path that leaves the available code
+stops at a `[boundary]` hop that caps the finding's confidence. So before dispatching, work out
+where the paths are likely to go and whether that code is readable:
+
+- Start from the target path plus any `--trace-scope` roots supplied. That is the readable set.
+- Identify **outbound edges**: imports or package references resolving outside the target tree
+  (workspace/monorepo siblings, path-based or file-based dependency references, locally-linked
+  packages); HTTP/RPC/queue clients pointed at other first-party services; shared client libraries
+  or SDKs generated from another component's schema; auth or policy decisions delegated elsewhere.
+- For each edge, check whether the destination is already readable. Look for it as a sibling of the
+  target path, elsewhere in the same repository, or in an adjacent checkout — a sibling directory
+  with its own VCS metadata and a matching name is the common case. **Do not read outside the
+  supplied scope on your own initiative; report what you found instead.**
+- Produce two lists for the sub-agent prompt: **readable** roots (target + supplied scope, each
+  named so hops can be attributed to the right tree) and **unreadable but reachable** components
+  (name them, so sub-agents mark those hops `[boundary]` rather than guessing).
+- If unreadable-but-reachable components exist, say so in the final report's **Trace Coverage**
+  note and tell the user which paths would make those findings verifiable. Do not silently produce
+  lower-confidence findings without explaining that the cause was missing code rather than weak
+  evidence — those are very different things to a reader deciding what to fix.
+
+This step is cheap and is the difference between "we could not confirm" and an unexplained cap on
+half the findings.
 
 **2b. Read available documentation** (use Read, skip if file doesn't exist):
 - `{target_path}/CLAUDE.md`
@@ -122,6 +149,9 @@ Then for each applicable module, read the module prompt file using the resolved 
 - `{skill_dir}/modules/terraform.md`
 - `{skill_dir}/modules/cicd.md`
 
+Also read `{skill_dir}/references/trace-protocol.md`. It is **not** a module — it is the shared
+validation method every module uses, and its full text is passed to every sub-agent.
+
 Read all applicable module files in parallel using the Read tool.
 
 ### Step 5: Dispatch Sub-Agents in Parallel
@@ -133,14 +163,17 @@ For each applicable module, spawn a sub-agent using the Task tool with `subagent
 Each sub-agent prompt MUST include:
 1. The system context summary (from Step 2)
 2. The full module prompt content (read from the module file)
-3. The target path to scan
-4. The standardized output format
+3. **The full text of `references/trace-protocol.md`** — every module validates findings the same way, so this is passed verbatim to every sub-agent, not summarized
+4. The target path to scan, and the trace scope (target path + any `--trace-scope` roots)
+5. The standardized output format
 
 **Sub-agent prompt template**:
 ```
 You are conducting a security audit. Your module is: {MODULE_NAME}
 
-TARGET PATH: {target_path}
+TARGET PATH (findings are reported only against files here): {target_path}
+TRACE SCOPE (you may READ anything here to follow a path; do not report findings outside TARGET PATH): {target_path}{, plus each --trace-scope root, each named}
+{If no --trace-scope roots were supplied and the recon found sibling components the paths may reach, add: "NOTE: the following components appear reachable from the target but were NOT supplied for tracing — treat any path into them as a [boundary] hop: {list}. Say so in the finding, per the trace protocol."}
 
 SYSTEM CONTEXT (discovered by orchestrator — use this to understand the architecture):
 {SYSTEM_CONTEXT_SUMMARY}
@@ -148,6 +181,14 @@ SYSTEM CONTEXT (discovered by orchestrator — use this to understand the archit
 Use the system context above to understand how components interact. When tracing data flows or trust boundaries, consider how input in one service may reach another. If the system context is sparse, read CLAUDE.md or README.md files in the target path for additional context.
 
 {MODULE_PROMPT_CONTENT}
+
+TRACE PROTOCOL — this is a GATE on every finding, not documentation. Read it in full and apply it
+before you report anything. A candidate you have not traced is an observation, not a finding; the
+falsification pass in §5 is what tells you whether it is real. Findings are reported with a
+`**Trace:**` field in the format defined in §6, and your confidence score is derived from the
+weakest verification marker on the chain per §3 — it is not a separate judgement.
+
+{TRACE_PROTOCOL_CONTENT}
 
 FALSE POSITIVE RULES — Do NOT report findings that match these:
 1. Test files: Vulnerabilities in unit tests or test-only code are not exploitable.
@@ -162,11 +203,16 @@ FALSE POSITIVE RULES — Do NOT report findings that match these:
 10. Documentation files: Do not report findings in markdown, text, or documentation files.
 11. CI/CD pipeline variables: Build-time variables injected by CI systems ($CI_*, $GITHUB_*, $BUILDKITE_*) are not secrets and should not be flagged as hardcoded credentials.
 
-CONFIDENCE SCORING:
-For each finding, assess your confidence that it is a real, exploitable vulnerability:
-- HIGH (8-10): Clear vulnerability with concrete attack path.
-- MEDIUM (6-7): Suspicious pattern, likely exploitable under specific conditions.
-- LOW (1-5): Theoretical concern or uncertain.
+CONFIDENCE SCORING — derived from the trace, per trace-protocol §3. Do not score on impression:
+- HIGH (8-10): Every hop on the chain is `[verified]`. You walked the whole path and read each step.
+- MEDIUM (6-7): The chain holds but carries at least one `[inferred]`, `[assumed]`, or `[boundary]`
+  hop on the authorization, reachability, or input-control segment. This is the ceiling for any
+  finding whose path leaves the trace scope.
+- LOW (1-5): Two or more `[assumed]` hops, or the source or sink itself is unverified.
+
+If the falsification pass BREAKS the chain, the candidate is dropped entirely rather than
+downgraded — and recorded in your clean-coverage note per trace-protocol §7, so the next run does
+not re-derive it.
 
 {If --include-low: "Include ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."}
 
@@ -187,8 +233,15 @@ Return your findings as a markdown list. For each finding, use this exact format
 ```{language}
 {Actual code snippet showing the vulnerability. Include enough surrounding context (function name, relevant variables) that a developer can locate and understand it without opening the file.}
 ```
+**Trace:** {REQUIRED. The validated path, in the format defined in trace-protocol §6: the shape
+(dataflow | reachability | control-failure), a one-line statement of the path, then one numbered
+hop per step — each with `file:line` and a `[verified]` / `[inferred]` / `[assumed]` / `[boundary]`
+marker — followed by a `**Breaks if:**` line naming the control that would defeat the chain and
+where you confirmed it is absent or insufficient. Hop count equals real path length; a
+same-line source and sink is a one-hop trace. Evidence shows WHERE the defect is; Trace shows THAT
+it is reachable, and is what makes the finding checkable by someone who did not do the work.}
 **Current controls:** {What security measures are ALREADY in place that partially mitigate this risk — e.g., "input is tenant-scoped so only affects the attacker's own tenant", "WAF blocks common payloads at the edge", "data source is trusted (Secret Manager)". Write "None" if no mitigations exist. This field helps prioritize — a finding with strong existing controls is lower real-world risk.}
-**Exploit scenario:** {Step-by-step attack scenario: (1) attacker does X, (2) this causes Y, (3) resulting in Z impact. Be concrete — name the endpoint, parameter, or field involved.}
+**Exploit scenario:** {Step-by-step attack scenario: (1) attacker does X, (2) this causes Y, (3) resulting in Z impact. Be concrete — name the endpoint, parameter, or field involved. This is the Trace told as a story and MUST NOT contain a step the Trace does not support — if it does, either the trace is incomplete (go finish it) or the step is speculation (cut it). Start from the weakest principal for which the path holds, and state it.}
 **Fix:** {Implementation-ready remediation. Include:
 - Which files to modify and what to change in each
 - Specific function/method names to update
@@ -199,7 +252,15 @@ This should be detailed enough that a coding agent can implement the fix without
 
 If you find no issues for a category, do not include it. Only report real findings, not theoretical concerns. Prioritize findings that are actually exploitable over pattern-matching noise.
 
-At the end, include a summary count:
+At the end, include BOTH of the following:
+
+1. A clean-coverage note — a short section listing what you checked and cleared, especially any
+   candidate the falsification pass killed and the specific fact that killed it (a global control
+   that supplies the missing guard, an upstream type constraint, a package that is never loaded).
+   State it as "checked X, holds because Y", not as an absence. This is what distinguishes "the
+   audit did not look" from "the audit looked and it holds", and it stops the next run
+   re-investigating the same dead end.
+2. The summary count:
 **{MODULE_NAME} Module Summary**: X Critical, X High, X Medium, X Low, X Informational
 ```
 
@@ -211,11 +272,14 @@ Read the report template from `{skill_dir}/templates/report.md` and fill it in w
 1. Executive summary with overall posture assessment
 2. Finding summary table (counts by severity)
 3. All findings grouped by severity (Critical → Informational), with module tag on each
-4. Deduplicate any findings that overlap between modules (e.g., code + api might both flag the same SQL injection). When deduplicating, merge the affected files lists and keep the most detailed fix instructions.
-5. Drop any findings with MEDIUM confidence that lack a concrete exploit scenario
-6. Assign sequential IDs: C-1, H-1, M-1, L-1, I-1 (by severity)
-7. All findings start with **Status:** OPEN and blank **Remediation notes:** (these get filled in during triage)
-8. Preserve the **Affected files**, **Current controls**, and implementation-specific **Fix** details from sub-agents — these are critical for actionability
+4. Deduplicate any findings that overlap between modules (e.g., code + api might both flag the same SQL injection). When deduplicating, merge the affected files lists and keep the most detailed fix instructions. **Merge the traces too, and prefer the better-verified one** — if one module reached a hop by reading it and another assumed it, keep the `[verified]` hop and raise the merged finding's confidence accordingly. Two modules independently tracing the same path to the same conclusion is corroboration; say so on the merged finding.
+5. Drop any finding whose **Trace** is missing, or whose Trace does not actually connect its stated source to its stated sink. An untraced finding was not validated, and shipping it spends the reader's trust on something nobody checked. If it looks important, send the module agent back for the trace rather than publishing it unverified.
+6. Drop any findings with MEDIUM confidence that lack a concrete exploit scenario, and any whose Exploit scenario asserts a step the Trace does not support.
+7. Assign sequential IDs: C-1, H-1, M-1, L-1, I-1 (by severity)
+8. All findings start with **Status:** OPEN and blank **Remediation notes:** (these get filled in during triage)
+9. Preserve the **Trace**, **Affected files**, **Current controls**, and implementation-specific **Fix** details from sub-agents — these are critical for actionability. Never compress a Trace to prose in consolidation; its per-hop `file:line` and status markers are the whole point.
+10. Collect the module clean-coverage notes into a single **Verified Clean** section near the end of the report, grouped by area. Include the killed candidates and the fact that killed each. A future audit reads this to avoid re-deriving the same dead ends, and a reader uses it to tell silence-because-checked from silence-because-missed.
+11. If any finding carries a `[boundary]` hop, add a short **Trace Coverage** note under the summary: which components the paths reached that were not available for tracing, and that supplying them (via `--trace-scope`) could raise those findings' confidence or severity. This makes the audit's own blind spots visible instead of implicit.
 
 **Finding format in the consolidated report:**
 ```
@@ -236,6 +300,10 @@ Read the report template from `{skill_dir}/templates/report.md` and fill it in w
 \`\`\`{language}
 {code snippet}
 \`\`\`
+**Trace:** {shape} — {one-line path statement}
+1. `{file}:{line}` — {what happens here} [verified]
+2. `{file}:{line}` — {what happens here} [verified]
+**Breaks if:** {the control that would defeat this chain, and where it was confirmed absent or insufficient}
 **Current controls:** {existing mitigations}
 **Exploit scenario:** {step-by-step attack}
 **Fix:** {implementation-ready remediation with file paths and code patterns}
@@ -252,7 +320,9 @@ Write the consolidated report to `{target_path}/docs/audits/audit-security-repor
     "target": "{TARGET_PATH}",
     "date": "{YYYY-MM-DD}",
     "modules_run": ["code", "secrets", ...],
-    "modules_skipped": ["terraform", ...]
+    "modules_skipped": ["terraform", ...],
+    "trace_scope": ["<target path>", "<additional roots supplied via --trace-scope>"],
+    "trace_boundaries": ["<reachable components that were not available to trace into>"]
   },
   "summary": {
     "overall_risk": "High",
@@ -277,6 +347,16 @@ Write the consolidated report to `{target_path}/docs/audits/audit-security-repor
       "modules": ["code", "frontend"],
       "description": "...",
       "evidence": "...",
+      "trace": {
+        "shape": "dataflow | reachability | control-failure",
+        "summary": "one-line statement of the path",
+        "hops": [
+          { "n": 1, "location": "src/app.py:42", "what": "...", "status": "verified" },
+          { "n": 2, "location": "<external component>", "what": "...", "status": "boundary" }
+        ],
+        "breaks_if": "...",
+        "fully_verified": false
+      },
       "current_controls": "...",
       "exploit_scenario": "...",
       "fix": "..."

@@ -84,8 +84,9 @@ ln -s "$PWD/ai-skills/skills/auditing/audit-security" ~/.claude/skills/audit-sec
 ```
 
 A skill lives at the directory named in its category table above. Copy the whole directory,
-not just its `SKILL.md` - the audit skills keep their checks in `modules/`, and the
-Ralph loop ships `ralph.sh` alongside its templates.
+not just its `SKILL.md` - the audit skills keep their checks in `modules/` and their shared
+validation method in `references/`, and the Ralph loop ships `ralph.sh` alongside its
+templates.
 
 Restart Claude Code, then type the command. Each skill's own README covers its
 options and prerequisites.

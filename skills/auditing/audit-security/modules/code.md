@@ -13,7 +13,7 @@ Review application code for security vulnerabilities. Focus on real exploitable 
 
 ### 2. Authentication & Authorization
 <!-- Standards: OWASP-Web-A01:2025, OWASP-Web-A07:2025, OWASP-API1:2023, OWASP-API5:2023, CWE-862, CWE-863, CWE-306, CWE-639 -->
-- Missing auth checks on endpoints that should require authentication
+- Missing auth checks on endpoints that should require authentication. If the framework is **opt-in** for auth (a guard/middleware/dependency must be explicitly applied, so there is no "public" marker to grep for and the bug is the ABSENCE of one), enumerate routes and their effective guard chains using the method in `api.md` §1b rather than relying on a marker grep.
 - Privilege escalation paths (can a lower-role user access higher-role functionality?)
 - Session management flaws (predictable tokens, missing expiry, no invalidation)
 - Multi-tenant isolation failures (queries missing `tenant_id` scoping)
@@ -51,15 +51,81 @@ Review application code for security vulnerabilities. Focus on real exploitable 
 - Blocklist-based URL validation (bypassable with encoding tricks)
 - Missing DNS resolution checks before outbound requests
 - Redirect following that could reach internal services
-- **Proxy/forwarder endpoints that build an outbound URL by string-concatenating a "path" or "forward" query param onto a fixed base host** (any language/HTTP client — this is a language-agnostic pattern, not just Python `requests`/`urllib`): `${BASE_HOST}${param}`, `baseUrl + req.query.path`, `new URL(param, base)` whose result is used without asserting `.host`/`.origin` still equals the intended host afterward. This is a common shape for logging/telemetry/webhook proxy endpoints (e.g. a browser-SDK log-forwarding proxy) and is exploitable via URL userinfo/authority injection (`@evil.com`, `//evil.com`) even when the param is nominally "just a path" — see the SSRF false-positive rule for how to tell a real path-only case from this.
+- **Proxy/forwarder endpoints that build an outbound URL by string-concatenating a caller-supplied "path"-like value onto a fixed base host** (any language/HTTP client — this is a language-agnostic pattern, not just Python `requests`/`urllib`): `${BASE_HOST}${param}`, `baseUrl + req.query.path`, `new URL(param, base)` whose result is used without asserting `.host`/`.origin` still equals the intended host afterward. This is a common shape for logging/telemetry/webhook/ingest proxy endpoints and is exploitable via URL userinfo/authority injection (`@evil.com`, `//evil.com`) even when the param is nominally "just a path" — run the dedicated section 6b rubric on every such endpoint, and see the SSRF false-positive rule for how to tell a real path-only case from this.
 
-### 6b. Server-Side Proxy / Forwarder Endpoints (dedicated check — do not skip)
+### 6b. Trusted-Prefix / Base-Host String Concatenation SSRF (Proxy & Forwarder Endpoints — dedicated check, do not skip)
 <!-- Standards: OWASP-API7:2023, CWE-918 -->
-Any endpoint whose entire job is to forward/proxy a request to a fixed third-party or internal destination (log ingestion proxies, webhook relays, image/file proxies, "fetch this URL for me" endpoints) deserves a specific, deliberate check, separate from generic SSRF pattern-grepping:
-1. Find the line that constructs the outbound URL. Is the destination host ever derived, even partially, from caller input (query param, header, body field)?
-2. If yes: is the caller-supplied piece validated as a strict path (leading `/`, no `@`/`//`/backslash/scheme) via real parsing (e.g. `new URL(path, base)` + host-equality assertion), or is it just concatenated/templated into the base URL string? Concatenation without that validation is exploitable regardless of what the field is named or what the framework/SDK's own docs say its "intended" shape is.
-3. Trace what the resulting request method is limited to (e.g., hardcoded `POST`) — this bounds which internal routes are reachable if the SSRF pivots inward, and is worth noting in the exploit scenario.
-4. Explicitly reason about pivot potential: could the forwarder be redirected at an internal-only hostname/IP (cluster-internal service, cloud metadata endpoint `169.254.169.254`, a private CIDR)? If the endpoint is itself internet-facing, this turns an internal-only weakness elsewhere into an internet-reachable one — flag that chain explicitly and let it drive severity up, even if you haven't verified the internal target is itself vulnerable.
+Applies to any endpoint whose job is to relay/forward a caller's request to a fixed
+upstream destination (log/metrics ingestion proxies, webhook relays, file/image fetch
+proxies, "call this API for me" endpoints, redirect handlers) in ANY language/framework.
+This is a distinct, deliberate check — separate from generic SSRF pattern-grepping —
+because the vulnerable shape reliably escapes keyword search (it isn't about an
+unvalidated *full* URL; it's about a supposedly-safe *path fragment* being trusted).
+
+1. Find every outbound HTTP/RPC call in the codebase (client library call: e.g.,
+   `axios`/`fetch`/`http.request` in JS/TS, `requests`/`httpx`/`urllib` in Python,
+   `net/http` in Go, `HttpClient`/`RestTemplate`/`WebClient` in Java, `Net::HTTP` in Ruby).
+2. For each such call, find where its URL argument was constructed. Walk backwards
+   through variable assignments to the ultimate source(s).
+3. Ask: does ANY caller-controlled input (query param, header, path param, request
+   body field, or upstream webhook payload field) reach that URL string — even
+   partially, even if it's meant to be "just a path" or "just an identifier"?
+4. If yes, determine HOW it was combined with any hardcoded/trusted base value
+   (a constant/env var that looks like a host — names containing HOST/BASE/ORIGIN/
+   UPSTREAM/TARGET/INTAKE/ENDPOINT):
+   - **UNSAFE, no further test needed**: plain string concatenation or
+     template-literal/f-string joining (`BASE + input`, `` `${BASE}${input}` ``,
+     Python f-string/`%`/`.format`, Go `fmt.Sprintf`), OR passing the raw input as
+     a full/absolute URL to the client without first checking it resolves to the
+     intended host. This is the common case and is unsafe outright — you do not
+     need a URL-parsing helper to be present to reach this verdict.
+   - **UNSAFE even when a URL-parsing helper IS used** (`new URL(input, base)`
+     and similar), unless the code THEN asserts the resulting
+     `.host`/`.hostname`/`.origin`/`.authority` still equals the intended
+     constant AFTER parsing — parsing alone is not validation; authority-injection
+     tricks can still smuggle a different host through unless that equality
+     check exists.
+   - **SAFE**: the input is validated with an anchored allowlist/regex requiring a
+     single leading `/`, rejecting `@`, rejecting a second leading `/`
+     (protocol-relative), rejecting `:` before any `/`, rejecting backslashes, AND
+     independently re-parsed to confirm host equality — or the input is not used
+     to build the destination at all (e.g. only used to select from a fixed
+     enum/allowlist of pre-built URLs).
+5. If unsafe, the following are the three distinct shapes an attacker-supplied
+   value takes to prove host takeover, regardless of the field's declared
+   purpose or the vendor SDK's documented "shape" for that field:
+   - **Userinfo injection**: a leading `@` — the intended host becomes a
+     basic-auth username and the attacker's host follows it
+     (`TRUSTED_HOST` + `@evil.example/x` → connects to `evil.example`).
+   - **Protocol-relative injection**: a leading `//`, or an embedded `://`
+     scheme prefix, overriding the authority outright.
+   - **Boundary/domain-splice injection**: this applies specifically when the
+     trusted constant and the input are concatenated with NO enforced
+     separator between them (i.e. nothing guarantees the joined string has a
+     `/` right after the trusted host). Here even an input with no special
+     characters at all — e.g. `.evil.example/x` — splices onto the end of the
+     trusted host to produce a single attacker-controlled string
+     (`https://trusted-host.example.evil.example/x`) that resolves to a host
+     the attacker controls. Always check whether the concatenation site
+     enforces a separator; if it doesn't, this shape applies even when `@`
+     and `//` are both rejected elsewhere.
+6. This bug does not require any keyword like "forward" or "proxy" in the field
+   or file name — check ALL outbound-URL construction sites the same way, but
+   treat any file whose whole purpose is relaying a request (name contains
+   proxy/forward/relay/webhook-passthrough/ingest) as highest priority since
+   caller-controlled destination fragments are most common there.
+7. Also check: is a timeout/size-limit set on the outbound call, and does the
+   *service itself* (not merely headers forwarded verbatim from the inbound
+   request) attach a secret/credential it holds to the outbound call — an API
+   key, service token, or basic-auth value read from its own config/env/secret
+   store? Caller-supplied headers being passed through (e.g. the inbound
+   request's own `content-type`/`accept`/`user-agent`) do NOT count here, since
+   they carry nothing the service is trying to protect. If a service-held
+   secret IS attached AND the destination can be redirected per the above,
+   that's a credential-exfiltration amplifier, not just an availability issue —
+   call this out explicitly and raise severity.
+8. Trace what the resulting request method is limited to (e.g., hardcoded `POST`) — this bounds which internal routes are reachable if the SSRF pivots inward, and is worth noting in the exploit scenario.
+9. Explicitly reason about pivot potential: could the forwarder be redirected at an internal-only hostname/IP (cluster-internal service, cloud metadata endpoint `169.254.169.254`, a private CIDR)? If the endpoint is itself internet-facing, this turns an internal-only weakness elsewhere into an internet-reachable one — flag that chain explicitly and let it drive severity up, even if you haven't verified the internal target is itself vulnerable.
 
 ### 7. File Operations
 <!-- Standards: CWE-22 -->
@@ -147,6 +213,8 @@ http\.Get\(|http\.Post\(|HttpClient|Net::HTTP|RestTemplate|WebClient
 # SSRF — the URL-construction pattern itself, independent of client/language (grep the sink's URL argument backwards to find one of these)
 \$\{[A-Za-z_]*HOST[A-Za-z_]*\}\$\{|\+\s*req\.(query|params|body)|new URL\(.*,\s*(req\.|param|input)
 forward.*param|proxy.*url.*param|targetUrl\s*=
+# SSRF — trusted base-host constants/env vars whose concatenation sites must be checked per section 6b
+[A-Z_]*(HOST|BASE|ORIGIN|UPSTREAM|TARGET|INTAKE|ENDPOINT)[A-Z_]*\s*[:=]
 
 # Deserialization
 pickle\.loads|yaml\.load\b(?!.*Loader)|marshal\.loads
@@ -154,8 +222,12 @@ pickle\.loads|yaml\.load\b(?!.*Loader)|marshal\.loads
 # Path traversal
 open\(.*\+|os\.path\.join.*request|os\.path\.join.*user
 
-# Missing auth (look for route definitions without auth decorators/middleware)
+# Missing auth, opt-out frameworks (an explicit public/none marker to find)
 @app\.route|@router\.|RouteConfig.*auth_level.*NONE
+
+# Missing auth, opt-in frameworks (nothing to grep for — the bug is the ABSENCE of a guard).
+# Grep the guards that ARE used somewhere, then diff that set against every route registration (see api.md 1b).
+UseGuards\(|@PreAuthorize|@Secured|permission_classes|login_required|Depends\(.*[Aa]uth|before_action.*authenticate|APP_GUARD
 
 # TLS bypass
 verify=False|CERT_NONE

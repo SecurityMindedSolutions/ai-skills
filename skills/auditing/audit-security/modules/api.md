@@ -11,6 +11,79 @@ Review API endpoints, route configurations, and request handling for security vu
 - API key validation gaps (deleted/expired entities still authenticated)
 - Token validation timing (check before or after other processing?)
 
+**1b. Missing Authentication on Opt-In-Auth Frameworks (Silent-by-Default Unauthenticated Routes — dedicated check, do not skip)**
+<!-- Standards: OWASP-API2:2023, CWE-306, CWE-862 -->
+The bullets above assume an *opt-out* framework, where an explicit marker
+(`AuthLevel.NONE`, `@login_not_required`) declares a route public and you can
+grep for that marker. Many modern frameworks are the opposite: auth is
+OPT-IN per route, and there is no marker to grep for — the vulnerability is
+the ABSENCE of one. Examples: NestJS `@UseGuards(...)` / a global `APP_GUARD`
+provider, Express/Koa middleware chains, Spring Security
+`@PreAuthorize`/`@Secured`/security-filter-chain config, FastAPI
+`Depends(get_current_user)`, Django `permission_classes`/`@login_required`,
+Rails `before_action :authenticate!`. A route with none of these applied is
+unauthenticated by default. Treat this as a separate pass from the marker-grep
+above — you must enumerate the positive set, not search for a negative flag:
+
+1. Identify the framework(s) in use and, for each, identify EVERY mechanism
+   this specific codebase uses anywhere to gate a route (grep the whole repo
+   for guard/middleware/dependency names actually used at least once — don't
+   assume framework defaults, use what THIS codebase does elsewhere). A
+   guard/middleware only counts here if it verifies the CALLER'S identity or
+   credentials (a token, session, API key, signature, mTLS cert). Something
+   merely named "guard" that gates a route on an environment flag, feature
+   flag, or request-shape check (e.g. a docs-exposure toggle) is not an auth
+   mechanism and must not be treated as one just because of its name — read
+   its body, not just its name, before deciding it counts.
+2. Enumerate every route/handler (controller method, router registration, view
+   function) in the module(s) under review — every HTTP verb, not just POST.
+3. For each route, determine its FULL effective middleware/guard/dependency
+   chain: method-level decorator/dependency, controller/class-level decorator,
+   module-level provider, AND global application-level guard/middleware
+   (checked once for the whole app — a global guard means individual routes
+   need no local decorator, so confirm whether a global one exists before
+   concluding a route is unguarded).
+4. Flag any route where that chain contains NONE of the auth mechanisms
+   identified in step 1, AND the route does any of: creates/deletes/mutates a
+   resource, triggers a side effect outside the request (spawns a
+   process/job/container, sends a message, calls another internal service with
+   elevated credentials, writes to storage), or returns data scoped to a
+   specific caller/tenant. A plain unauthenticated GET that discloses internal
+   operational/system state (job status, infra metadata, other users' records)
+   still belongs in this bullet even in a single-tenant service with no
+   explicit tenant model — "no tenant concept exists" is not the same as "no
+   confidentiality boundary exists"; flag it, at lower confidence if it's
+   read-only, especially when unauthenticated mutating routes sit right next
+   to it (their presence signals the read route was never behind an intended
+   auth boundary either).
+5. Do not suppress a finding just because NO other route in the repo is
+   protected either — "the whole service has no auth anywhere" is not a
+   mitigating factor, it is the finding (arguably a higher-severity one, since
+   it means the entire API surface, not just one endpoint, is exposed). Only
+   treat missing-auth as expected/non-finding when the route is genuinely
+   meant to be public (health checks, static assets, truly public read
+   endpoints) — a route that creates infrastructure, runs code, or has any
+   side effect is never in that category regardless of what other routes in
+   the repo do.
+6. Cross-check documentation against enforcement: if the API's docs/OpenAPI/
+   Swagger setup DECLARES a security scheme (API key, bearer token, OAuth) —
+   via `addApiKey`/`addBearerAuth`/`SecurityRequirement`/`@ApiSecurity`/OpenAPI
+   `securitySchemes` — search the entire codebase for anywhere that scheme is
+   actually CONSUMED by a real guard/middleware/dependency check. If the
+   documented scheme is never wired into any enforcement code, that is "auth
+   theater": it makes the API look protected in its own documentation/Swagger
+   UI while every route remains open, and callers/reviewers relying on the
+   docs will be misled. This holds regardless of whether the doc config
+   applies the scheme per-operation (`@ApiSecurity`/`security:` on individual
+   routes) or only registers it globally (`components.securitySchemes`/
+   `addApiKey` with no per-route annotation) — an unenforced scheme is auth
+   theater either way, and an unapplied one is if anything worse (it isn't
+   even wired into the docs, let alone the code). Flag this as one
+   repo/API-wide finding, and reference it as amplifying context in every
+   unauthenticated dangerous-route finding in the same service — it turns "an
+   attacker would have to know this route is open" into "the service's own
+   docs imply it's protected, but nothing actually checks."
+
 ### 2. Input Validation & Mass Assignment
 <!-- Standards: OWASP-API3:2023, CWE-20, CWE-915 -->
 - Missing parameter validation on route definitions
@@ -180,7 +253,7 @@ instead audit the **content-gating logic** that decides what an anonymous caller
 ## Scanning Approach
 
 1. Read architecture docs to understand the API framework, auth middleware, and route structure
-2. Map all route definitions and their auth levels — flag any suspicious NONE/public endpoints
+2. Map all route definitions and their auth levels — flag any suspicious NONE/public endpoints. If the framework is opt-in for auth (no explicit "public" marker exists at all), run the 1b enumeration instead of relying on a marker grep.
 3. Check each endpoint's input validation against what the handler actually uses
 4. Verify response payloads don't include unnecessary internal data
 5. Check error handling consistency across all endpoints
@@ -193,8 +266,17 @@ instead audit the **content-gating logic** that decides what an anonymous caller
 # Route definitions
 RouteConfig|@app\.route|@router\.|app\.(get|post|put|delete|patch)
 
-# Auth levels
+# Auth levels (opt-out frameworks — an explicit public marker exists)
 AuthLevel\.NONE|auth_level.*none|authenticate.*false|@login_not_required
+
+# Auth guards/middleware actually present (opt-in frameworks — build the positive set, then diff against routes)
+UseGuards\(|@PreAuthorize|@Secured|permission_classes|login_required|Depends\(.*[Aa]uth|before_action.*authenticate|APP_GUARD
+
+# Route registrations to diff against the guard set above (see section 1b)
+@(Get|Post|Put|Delete|Patch)\(|@app\.route|router\.(get|post|put|delete)|@RequestMapping|@RestController
+
+# Declared-but-maybe-unenforced security schemes ("auth theater" — confirm each is consumed by a real check)
+addApiKey\(|addBearerAuth\(|SecurityRequirement|@ApiSecurity|securitySchemes
 
 # CORS
 Access-Control-Allow-Origin|\*|cors.*origin

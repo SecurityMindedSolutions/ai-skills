@@ -84,6 +84,66 @@ above — you must enumerate the positive set, not search for a negative flag:
    attacker would have to know this route is open" into "the service's own
    docs imply it's protected, but nothing actually checks."
 
+**1c. Credential/Session Revocation Propagation (dedicated check — do not skip)**
+<!-- Standards: OWASP-Web-A07:2025, CWE-613, CWE-639 -->
+Authentication is frequently split across a live check ("is this credential valid
+right now") and a cached/memoized check ("was this credential valid recently"),
+and the cached path is where revocation silently fails. This applies to API
+gateway authorizers, Lambda/serverless authorizer caches, in-process memoization
+(`lru-cache`, `node-cache`, `functools.lru_cache`, a plain module-level dict/Map
+with a TTL), and any framework's own token-introspection cache.
+
+1. Find every place a credential/token/session/API-key validity result is cached
+   — grep for cache constructs (`new LRUCache`, `NodeCache`, `@lru_cache`,
+   `memoize`, a dict/Map keyed by token/credential id) anywhere near
+   authentication/authorization code, and any explicit `*_CACHE_TTL`,
+   `cacheTtl`, `authorizerResultTtlInSeconds`, or similar TTL configuration.
+2. For each one found, check whether there is an ACTIVE invalidation path —
+   does a revoke/deactivate/logout operation anywhere in the codebase publish
+   an event, call a cache-eviction function, or otherwise reach into that cache
+   to remove the now-invalid entry? Or does the entry only leave the cache when
+   its TTL naturally expires?
+3. If there is no active invalidation, this is a finding: the credential
+   continues to authenticate for up to the TTL window after an operator
+   believes they've revoked it. Severity should scale with the TTL length and
+   with how central the cached check is (e.g., a shared API-gateway authorizer
+   used by every route in the fleet is worse than a single service's local
+   session cache) — but even a short TTL is a real, reportable gap, not a
+   false positive; note the bounded window explicitly in **Current controls**
+   so triage can weigh it accurately rather than treating "it expires
+   eventually" as equivalent to "properly invalidated."
+4. If the same credential/token type has MORE THAN ONE independent cache or
+   validation path in the codebase (e.g., a gateway-level authorizer cache AND
+   a separate introspection-endpoint cache), check each one separately — one
+   being fixed does not mean the other is, and the presence of multiple
+   uncoordinated caches for the same credential type is itself worth calling
+   out as compounding exposure.
+
+**1d. Fail-Open on a Missing Associated Record (dedicated check — do not skip)**
+<!-- Standards: OWASP-Web-A01:2025, CWE-862, CWE-863 -->
+A common and easy-to-miss authorization defect: code that loads a secondary
+record to determine whether the caller is allowed to proceed (an `Account`,
+`Tenant`, `Membership`, `Subscription`, `Profile` — anything looked up by
+foreign key from the authenticated principal) correctly rejects when that
+record is found and marked inactive/disabled/revoked, but has no explicit
+branch for "the record was not found at all" — and a missing record silently
+falls through as if the check passed.
+
+1. For every authorization/entitlement check that does a lookup-then-branch
+   (`if (record) { if (!record.active) reject() }` or equivalent in any
+   language), explicitly ask: what happens when the lookup returns null/None/
+   not-found? Is there an `else` (or equivalent) that rejects, or does control
+   flow simply continue past the whole block?
+2. This is especially dangerous immediately after data lifecycle changes: an
+   offboarding/deprovisioning process that DELETES the backing record (instead
+   of setting an inactive flag) will silently re-open access through any check
+   shaped like this, even though the intent was clearly to remove access.
+3. Treat this as a distinct pattern from ordinary null-pointer bugs — it is a
+   security control that has three possible states (allowed / explicitly
+   denied / absent) collapsed into two (checked / not-checked), where the
+   collapse happens to favor the attacker. A code review or type-checker
+   won't flag it because the code doesn't crash; it just does nothing.
+
 ### 2. Input Validation & Mass Assignment
 <!-- Standards: OWASP-API3:2023, CWE-20, CWE-915 -->
 - Missing parameter validation on route definitions
@@ -99,6 +159,34 @@ above — you must enumerate the positive set, not search for a negative flag:
 - Sensitive fields not excluded from API responses (passwords, hashes, internal flags)
 - Pagination without limits (can caller request unbounded result sets?)
 
+**3b. Filtered vs. Unfiltered Accessor Bypass (dedicated check — do not skip)**
+<!-- Standards: OWASP-API3:2023, CWE-200, CWE-862 -->
+Codebases that handle privileged/sensitive collections (role or permission
+definitions, tenant lists, PII-bearing records) frequently have TWO accessors
+for the same underlying data: a scoped/filtered one meant for
+external-facing use (`getVisibleRoles()`, `getScopedUsers()`,
+`listPublicFields()`) and a raw/complete one meant for internal use
+(`getAllRoles()`, `findAll()`, a direct repository/ORM call with no
+projection). The vulnerability is a route or handler that calls the raw
+accessor when it should call the filtered one.
+
+1. Grep for accessor pairs that share a stem but differ by a scoping
+   qualifier: `getAll*` vs `getVisible*`/`getScoped*`/`getPermitted*`,
+   `findAll()` vs a repository method that takes a scope/tenant/role
+   argument, a serializer/DTO that excludes fields vs. returning the raw
+   entity/model directly.
+2. Where both exist, check every caller of the raw/unfiltered one: is it only
+   used internally (another service-layer computation, a background job), or
+   does its result flow into an HTTP response? Any response-bound call to the
+   unfiltered accessor is a bypass of whatever filtering the codebase clearly
+   intended to apply somewhere.
+3. Also check the response's cacheability (`Cache-Control`, CDN/edge cache
+   config) when the data returned is privileged — a `public`/long-lived cache
+   directive on an endpoint that discloses internal or restricted data
+   amplifies the exposure (shared caches, CDNs, browser history) beyond the
+   single request that triggered it, and is worth calling out explicitly as
+   an amplifying factor even if the caching itself is a separate root cause.
+
 ### 4. CORS & Cross-Origin
 <!-- Standards: OWASP-API8:2023, OWASP-Web-A02:2025 -->
 - Wildcard CORS origins in production
@@ -112,6 +200,32 @@ above — you must enumerate the positive set, not search for a negative flag:
 - Missing pagination limits (can request page_size=999999?)
 - Expensive operations without throttling (report generation, exports, bulk operations)
 - File upload size limits
+
+**5b. Self-Healing / Bounded-Impact Claims Must Be Tested Against Rate Limiting (dedicated check — do not skip)**
+<!-- Standards: CWE-770, CWE-799 -->
+A destructive or disruptive action (delete-all, reset, bulk-teardown) is
+sometimes judged lower severity because *something else* in the system
+automatically repairs the damage on a schedule — a reconciliation job, a
+background resync, a cache that eventually repopulates. That reasoning is
+only valid if the destructive trigger itself cannot be repeated faster than
+the repair cycle. Before accepting "it self-heals" or "the impact is bounded"
+as a mitigating **Current control** for any destructive/disruptive endpoint:
+1. Identify the repair/reconciliation interval (e.g., "resyncs every 15-30
+   minutes").
+2. Check whether the triggering endpoint has a rate limit, auth requirement,
+   or any other friction that would stop a caller from simply looping the
+   request faster than that interval.
+3. If it has none, the "bounded" framing is false — a scripted/looping caller
+   converts a single bounded incident into an indefinite, sustained outage at
+   the caller's discretion. Report the finding's severity and exploit scenario
+   accordingly (treat it as unbounded/indefinite denial of service, not a
+   one-shot gap), and say explicitly in **Current controls** that the
+   self-healing mechanism does not mitigate a repeated/looping trigger.
+4. This reasoning applies independent of and in addition to any auth finding
+   on the same endpoint — even if the endpoint also lacks authentication
+   entirely, call out the missing-rate-limit dimension separately, since
+   fixing auth alone (without also rate-limiting) would still leave the
+   looping-trigger DoS available to any legitimate-but-compromised caller.
 
 ### 6. HTTP Security
 <!-- Standards: OWASP-API8:2023, OWASP Proactive Controls C8, NIST-CSF PR.DS -->
@@ -142,6 +256,7 @@ above — you must enumerate the positive set, not search for a negative flag:
 - Is there a double-submit cookie pattern, synchronizer token pattern, or framework-provided CSRF middleware?
 - Are CSRF protections applied uniformly (not missing on some state-changing routes)?
 - If the API is token-based (Bearer/API key in header), CSRF may not apply — verify auth mechanism before flagging.
+- **GET routes that perform a mutation are a CSRF/prefetch risk that framework CSRF middleware typically does NOT cover.** Standard CSRF protections (SameSite cookies, CSRF tokens, Origin/Referer checks) are conventionally applied only to POST/PUT/DELETE/PATCH — a route registered as `GET` whose handler body actually creates, deletes, or mutates state bypasses that protection entirely, and is trivially triggerable cross-site via a plain `<img>`/`<link>` tag, browser link-prefetch, or a victim simply opening a malicious link, with no token or special request needed. When enumerating routes for this section, don't assume "state-changing" means "non-GET" — read the handler body of every GET route, not just its declared verb, and flag any that mutates.
 - **Cross-layer CSRF flow validation**: When the backend validates CSRF tokens, verify the full flow works end-to-end: (1) the CSRF action name is in the generation endpoint's allowlist, (2) the frontend actually requests and sends the token, and (3) the backend validates it. A broken link in any of these three steps means CSRF is either silently failing or silently bypassed. Check both the backend validation code AND the frontend service/fetch calls for each protected endpoint.
 
 ### 10. API Inventory & Lifecycle
@@ -337,4 +452,24 @@ ENFORCE|enforce.*false|observe|monitor.?mode|fail.?open
 # Email-action / verification-link safety (GET must not mutate)
 oobCode|oob_code|action.*code|magic.?link|verify.*link|reset.*token|/auth/action
 token_urlsafe|secrets\.token|sha256.*token|single.?use|expires_at|ttl
+
+# Credential/session revocation caching (1c — check each hit for active invalidation on revoke)
+LRUCache|NodeCache|lru_cache|memoize|CACHE_TTL|cacheTtl|authorizerResultTtlInSeconds
+revoke|revoked|deactivate|invalidat.*cache|cache.*invalidat
+
+# Fail-open on missing record (1d — read surrounding branches, not just the grep hit)
+if\s*\(\s*(account|record|membership|tenant|profile|subscription)\s*\)|if\s+\w+\s+is\s+not\s+None
+\.active\b|is_active|isActive|status.*active
+
+# Filtered vs unfiltered accessor bypass (3b)
+getAll[A-Z]\w*\(|findAll\(|getVisible[A-Z]\w*\(|getScoped[A-Z]\w*\(|getPermitted[A-Z]\w*\(
+Cache-Control.*public|cache-control.*public
+
+# GET routes with mutating handler bodies (CSRF section)
+@(Get|get)\(.*\).*\n.*(delete|update|create|reset|destroy|remove)
+router\.get\(.*(delete|update|create|reset)
+
+# Self-heal / reconciliation claims to weigh against rate limiting (5b)
+resync|reconcil|self.?heal|scheduleTasks|ScheduleTasks|cron.*(recreate|resync|repair)
+ratelimit|rate.limit|throttl
 ```

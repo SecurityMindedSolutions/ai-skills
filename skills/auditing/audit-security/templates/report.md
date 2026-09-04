@@ -30,6 +30,12 @@
 |--------|----------|------|--------|-----|------|
 {MODULE_BREAKDOWN_ROWS}
 
+### Findings by Exposure
+
+| Exposure | Critical | High | Medium | Low | Info |
+|----------|----------|------|--------|-----|------|
+{EXPOSURE_BREAKDOWN_ROWS}
+
 ---
 
 ## Critical Findings
@@ -96,6 +102,7 @@ Each finding uses this format:
 - **Affected files**: All files that need changes to remediate (not just the primary one)
 - **Severity**: Critical / High / Medium / Low / Informational
 - **Confidence**: HIGH (clear exploit path) or MEDIUM (exploitable under specific conditions)
+- **Exposure**: Public-facing / Internal-network-reachable / Auth-gated-internal — how the finding is actually reached, kept separate from Severity so "how bad" and "how reachable" can be weighed independently
 - **Category**: Vulnerability category from the scanning module
 - **Modules**: Which audit module(s) flagged this finding
 - **Description**: What the vulnerability is and why it matters

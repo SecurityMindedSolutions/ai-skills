@@ -216,6 +216,27 @@ not re-derive it.
 
 {If --include-low: "Include ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."}
 
+SEVERITY CALIBRATION — Testing "Bounded"/"Mitigating" Claims:
+Before writing anything into **Current controls** that would lower a finding's
+severity (a claim that impact is "bounded," "self-healing," "low-probability,"
+or "requires an already-privileged caller"), stress-test the claim itself:
+- If the claim rests on a time window (a cache TTL, a reconciliation/resync
+  interval, a token expiry) — could the attacker simply repeat the triggering
+  action faster than that window, making the "bounded" impact actually
+  unbounded/indefinite? Check whether the trigger has its own rate limit or
+  auth gate before accepting the bound as real.
+- If the claim rests on "the caller must already hold valid credentials" —
+  does holding those credentials grant only ordinary access, or does the
+  finding itself grant something beyond what those credentials should allow
+  (privilege escalation, cross-tenant access, disabling a security control)?
+  A precondition of "authenticated" does not make a privilege-escalation or
+  cross-tenant finding low severity.
+- Write the mitigating claim AND the stress-test result into **Current
+  controls** explicitly (e.g., "resyncs every 15 min, but the reset endpoint
+  has no rate limit, so a looping caller defeats this bound — treated as
+  unbounded/indefinite, not one-shot"). A downgrade that isn't tested this way
+  is a guess, not an assessment.
+
 OUTPUT FORMAT:
 Return your findings as a markdown list. For each finding, use this exact format:
 
@@ -226,6 +247,7 @@ Return your findings as a markdown list. For each finding, use this exact format
 **Affected files:** List ALL files that would need changes to remediate this finding, not just the primary file. Use relative paths. If only one file, repeat the primary file.
 **Severity:** Critical | High | Medium | Low | Informational
 **Confidence:** HIGH | MEDIUM | LOW
+**Exposure:** {How this finding is actually reachable, independent of severity — one of: "Public-facing" (reachable from the open internet with no network-level gate), "Internal-network-reachable" (requires being on the VPC/mesh/internal network already, but no further credentials), "Auth-gated-internal" (requires both internal network access AND a valid credential/session). Base this on real deployment evidence (ingress/ALB scheme, security group rules, service mesh config) discovered in Step 2, not on assumption from the repo's name or docs. This is a distinct axis from Severity — an Internal-network-reachable finding can still be Critical if its impact is severe; the field exists so prioritization can weigh "how bad" and "how reachable" separately instead of one field trying to encode both.}
 **Category:** {category from module}
 **Standards:** {List the standards/frameworks this finding maps to, from the `<!-- Standards: -->` comment on the category header. Example: "OWASP-Web-A05:2025, CWE-89". If no comment exists, infer the most applicable standard.}
 **Description:** {What the vulnerability is and why it matters — be specific about the mechanism}
@@ -277,9 +299,10 @@ Read the report template from `{skill_dir}/templates/report.md` and fill it in w
 6. Drop any findings with MEDIUM confidence that lack a concrete exploit scenario, and any whose Exploit scenario asserts a step the Trace does not support.
 7. Assign sequential IDs: C-1, H-1, M-1, L-1, I-1 (by severity)
 8. All findings start with **Status:** OPEN and blank **Remediation notes:** (these get filled in during triage)
-9. Preserve the **Trace**, **Affected files**, **Current controls**, and implementation-specific **Fix** details from sub-agents — these are critical for actionability. Never compress a Trace to prose in consolidation; its per-hop `file:line` and status markers are the whole point.
+9. Preserve the **Trace**, **Affected files**, **Current controls**, **Exposure**, and implementation-specific **Fix** details from sub-agents — these are critical for actionability. Never compress a Trace to prose in consolidation; its per-hop `file:line` and status markers are the whole point.
 10. Collect the module clean-coverage notes into a single **Verified Clean** section near the end of the report, grouped by area. Include the killed candidates and the fact that killed each. A future audit reads this to avoid re-deriving the same dead ends, and a reader uses it to tell silence-because-checked from silence-because-missed.
 11. If any finding carries a `[boundary]` hop, add a short **Trace Coverage** note under the summary: which components the paths reached that were not available for tracing, and that supplying them (via `--trace-scope`) could raise those findings' confidence or severity. This makes the audit's own blind spots visible instead of implicit.
+12. Include a **Findings by Exposure** table (Public-facing / Internal-network-reachable / Auth-gated-internal, each broken out by severity) alongside the Findings by Module table — this surfaces whether Critical/High risk is concentrated on the internet edge or sitting on internal-only services, which changes remediation urgency even at equal severity.
 
 **Finding format in the consolidated report:**
 ```
@@ -292,6 +315,7 @@ Read the report template from `{skill_dir}/templates/report.md` and fill it in w
 - `{file_2}`
 **Severity:** {severity}
 **Confidence:** {confidence}
+**Exposure:** {Public-facing | Internal-network-reachable | Auth-gated-internal}
 **Category:** {category}
 **Standards:** {standards references, e.g., "OWASP-Web-A05:2025, CWE-89"}
 **Modules:** {module_1}, {module_2}
@@ -342,6 +366,7 @@ Write the consolidated report to `{target_path}/docs/audits/audit-security-repor
       "affected_files": ["src/app.py", "src/routes.py"],
       "severity": "High",
       "confidence": "HIGH",
+      "exposure": "Public-facing | Internal-network-reachable | Auth-gated-internal",
       "category": "...",
       "standards": "OWASP-Web-A03:2025, CWE-79",
       "modules": ["code", "frontend"],

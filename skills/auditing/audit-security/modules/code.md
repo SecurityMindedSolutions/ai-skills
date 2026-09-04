@@ -15,9 +15,11 @@ Review application code for security vulnerabilities. Focus on real exploitable 
 <!-- Standards: OWASP-Web-A01:2025, OWASP-Web-A07:2025, OWASP-API1:2023, OWASP-API5:2023, CWE-862, CWE-863, CWE-306, CWE-639 -->
 - Missing auth checks on endpoints that should require authentication. If the framework is **opt-in** for auth (a guard/middleware/dependency must be explicitly applied, so there is no "public" marker to grep for and the bug is the ABSENCE of one), enumerate routes and their effective guard chains using the method in `api.md` §1b rather than relying on a marker grep.
 - Privilege escalation paths (can a lower-role user access higher-role functionality?)
-- Session management flaws (predictable tokens, missing expiry, no invalidation)
+- Session management flaws (predictable tokens, missing expiry, no invalidation) — see the api module's section 1c for the dedicated revocation-propagation-via-cache check, which applies to any credential/session validity cache regardless of whether it lives in an "API" layer or general application code
 - Multi-tenant isolation failures (queries missing `tenant_id` scoping)
-- CSRF protection gaps on state-changing operations
+- Fail-open authorization on a missing associated record (deleted vs. explicitly deactivated) — see the api module's section 1d; this pattern shows up anywhere a lookup-then-branch authorization check exists, not just in HTTP handlers
+- CSRF protection gaps on state-changing operations, including a route registered as `GET` whose handler body itself performs a mutation — see the api module's CSRF section (9) for why this specifically evades framework CSRF middleware
+- Privileged/sensitive data served via a raw "get everything" accessor when a filtered/scoped equivalent exists in the same codebase — see the api module's section 3b
 
 ### 3. Cryptography & Randomness
 <!-- Standards: OWASP-Web-A04:2025, OWASP Proactive Controls C2 -->
@@ -34,6 +36,7 @@ Review application code for security vulnerabilities. Focus on real exploitable 
 - State machine violations (can steps be skipped or reordered?)
 - Numeric overflow/underflow in financial calculations
 - Missing validation on state transitions
+- Destructive/disruptive actions whose severity is being discounted because "something self-heals it" (a reconciliation job, a scheduled resync, a TTL) — see the api module's section 5b before accepting that as a real mitigation; it only holds if the trigger itself can't be looped faster than the repair cycle
 - **Dict merge key override**: When a dict is built from explicit fields and then merged with a user-supplied dict (e.g., `target_data.update(parameters)`), the merge can overwrite protected keys. Look for `dict.update()`, `{**dict1, **dict2}`, or `Object.assign()` where user-controlled data merges into a dict that already has security-relevant keys (user IDs, tenant IDs, target identifiers). The fix is to only add keys that don't already exist, or use an explicit allowlist.
 - **Multi-consumer authorization inconsistency**: When the same authorization function is called from multiple consumers (e.g., web API, public API, MCP server, CLI), verify all consumers pass the same parameters. A centralized `authorize(action_type=...)` that checks per-resource permissions only works if every caller passes `action_type`. If one caller omits it, the granular checks are silently skipped. Trace the authorize function's conditional logic (e.g., `if action_type is not None: check_permissions()`) and verify every call site passes all required parameters.
 - **Permission level mismatch on operations**: Write/destructive operations (delete, revoke, modify) should not use read-level permission checks. Look for route configs where a state-changing method (POST, PUT, DELETE) uses a read-scoped permission (e.g., `feature_role="read:*"` or `permission="view"`).
@@ -259,4 +262,15 @@ content_type|mimetype|file\.filename|secure_filename
 base64\.b64decode|pubsub_message|event\[.data.\]
 cloud_event|CloudEvent|storage\.objects
 trigger|event_type|cloud_scheduler
+
+# Credential/session revocation caching (see api module 1c)
+LRUCache|NodeCache|lru_cache|memoize|CACHE_TTL|cacheTtl
+revoke|revoked|deactivate|invalidat.*cache
+
+# Fail-open on missing record (see api module 1d)
+\.active\b|is_active|isActive|status.*active
+
+# Self-heal/reconciliation vs. rate limiting (see api module 5b)
+resync|reconcil|self.?heal|cron.*(recreate|resync|repair)
+ratelimit|rate.limit|throttl
 ```

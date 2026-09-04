@@ -221,7 +221,7 @@ WEB_LABELS = {"www", "app", "support", "help", "docs", "doc", "blog", "careers",
 # `${base}/p`, or `base()+"/p"`. We resolve that generically in two passes:
 #   1. build a name -> host map from any binding that yields a URL literal,
 #   2. attribute the paths appended to each such name back to its host.
-# This is deliberately pattern-shaped, not GetReal-specific.
+# This is deliberately pattern-shaped, not specific to any one target app.
 
 _URL_LIT = r'["\'`](https?://[a-zA-Z0-9.-]+[^"\'`]*)["\'`]'
 ALIAS_DEFS = [

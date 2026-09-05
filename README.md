@@ -12,61 +12,56 @@ run tools.
 
 ## Skills
 
-Grouped by category, matching the folders under [`skills/`](skills/).
+Grouped by category, matching the folders under [`skills/`](skills/). Each category
+README carries the full detail: usage, options, output format and customization.
 
+<!-- BEGIN SKILL INDEX -->
 ### Auditing
 
-`skills/auditing/` - codebase review, one skill per layer.
+[`skills/auditing/`](skills/auditing/) - codebase review, one skill per layer. Usage, options and output format in [its README](skills/auditing/README.md).
 
-| Skill | Command | What it does |
-|---|---|---|
-| [Security audit](skills/auditing/audit-security/) | `/audit-security` | Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD |
-| [Frontend audit](skills/auditing/audit-frontend/) | `/audit-frontend` | Reviews client-side architecture: design tokens, components, accessibility, performance, SEO |
-| [Backend audit](skills/auditing/audit-backend/) | `/audit-backend` | Reviews server-side patterns: handler hygiene, service layers, data access, error handling, observability |
-
-The three audit skills dispatch parallel sub-agents and consolidate their findings
-into one report. They overlap deliberately: the security audit asks whether something
-is *exploitable*, while the frontend and backend audits ask whether the *pattern* is
-sound.
+| Command | What it does |
+|---|---|
+| [`/audit-security`](skills/auditing/audit-security/) | Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD |
+| [`/audit-frontend`](skills/auditing/audit-frontend/) | Reviews client-side architecture: design tokens, components, accessibility, performance, SEO |
+| [`/audit-backend`](skills/auditing/audit-backend/) | Reviews server-side patterns: handler hygiene, service layers, data access, error handling, observability |
 
 ### Vulnerability management
 
-`skills/vulnerability-management/` - finding and fixing known vulns.
+[`skills/vulnerability-management/`](skills/vulnerability-management/) - finding and fixing known vulns. Usage, options and output format in [its README](skills/vulnerability-management/README.md).
 
-| Skill | Command | What it does |
-|---|---|---|
-| [GitHub vulnerability remediation](skills/vulnerability-management/github-remediate-vulns/) | `/github-remediate-vulns` | Scans a GitHub org for Dependabot, code scanning and secret scanning alerts, then fixes what it safely can and reports the rest |
+| Command | What it does |
+|---|---|
+| [`/github-remediate-vulns`](skills/vulnerability-management/github-remediate-vulns/) | Scans a GitHub org for Dependabot, code scanning and secret scanning alerts, then fixes what it safely can and reports the rest |
 
 ### Autonomous development
 
-`skills/autonomous-development/` - planning and running unattended work.
+[`skills/autonomous-development/`](skills/autonomous-development/) - planning and running unattended work. Usage, options and output format in [its README](skills/autonomous-development/README.md).
 
-| Skill | Command | What it does |
-|---|---|---|
-| [Ralph plan](skills/autonomous-development/ralph-plan/) | `/ralph-plan` | Interactive builder for a PRD with checkboxed tasks and acceptance criteria |
-| [Ralph loop](skills/autonomous-development/ralph-loop/) | `/ralph-loop` | Autonomous runner that works through that PRD one task at a time, no human in the loop |
+| Command | What it does |
+|---|---|
+| [`/ralph-plan`](skills/autonomous-development/ralph-plan/) | Interactive builder for a PRD with checkboxed tasks and acceptance criteria |
+| [`/ralph-loop`](skills/autonomous-development/ralph-loop/) | Autonomous runner that works through that PRD one task at a time, no human in the loop |
 
 ### Reconnaissance
 
-`skills/reconnaissance/` - passive recon of a live web app's stack.
+[`skills/reconnaissance/`](skills/reconnaissance/) - passive recon of a live web app's stack. Usage, options and output format in [its README](skills/reconnaissance/README.md).
 
-| Skill | Command | What it does |
-|---|---|---|
-| [Built-With](skills/reconnaissance/built-with/) | `/built-with` | Passive, headless recon of a web app's frontend - maps its third-party vendors, backend hosts and API surface from public JS, into a plain-English dossier |
+| Command | What it does |
+|---|---|
+| [`/built-with`](skills/reconnaissance/built-with/) | Passive, headless recon of a web app's frontend, mapping its third-party vendors, backend hosts and API surface from public JS into a plain-English dossier |
 
 ### Communication
 
-`skills/communication/` - restating what the agent just said, for a different reader.
+[`skills/communication/`](skills/communication/) - restating what the agent just said, for a different reader. Usage, options and output format in [its README](skills/communication/README.md).
 
-| Skill | Command | What it does |
-|---|---|---|
-| [Again](skills/communication/again/) | `/again` | Restates the last message in plain English, keeping every path, line number and count exactly as written |
-| [Elim](skills/communication/elim/) | `/elim` | Restates the last message for a manager: no code names, no shop talk, and no invented urgency |
-
-These two are a pair, and they disagree about one thing: whether the reader needs the
-names. `/again` keeps every identifier because the reader is going to open those
-files. `/elim` drops them all because the reader is not. Neither adds anything the
-source did not say.
+| Command | What it does |
+|---|---|
+| [`/again`](skills/communication/again/) | Restates the last message in plain English, keeping every path, line number and count exactly as written |
+| [`/elim`](skills/communication/elim/) | Restates the last message for a manager: no code names, no shop talk, and no invented urgency |
+| [`/ugh`](skills/communication/ugh/) | One breath. Restates the last message as a single sentence, plus a You line only when something actually needs you |
+| [`/huh`](skills/communication/huh/) | Now, next, you. Restates the last message as three labelled lines for picking a dropped thread back up |
+<!-- END SKILL INDEX -->
 
 ## Install
 
@@ -88,28 +83,8 @@ not just its `SKILL.md` - the audit skills keep their checks in `modules/` and t
 validation method in `references/`, and the Ralph loop ships `ralph.sh` alongside its
 templates.
 
-Restart Claude Code, then type the command. Each skill's own README covers its
-options and prerequisites.
-
-## Layout
-
-```
-skills/
-├── auditing/                        codebase review, one skill per layer
-├── vulnerability-management/        finding and fixing known vulns
-├── autonomous-development/          planning and running unattended work
-├── reconnaissance/                  passive recon of a live web app's stack
-└── communication/                   restating a message for a different reader
-```
-
-## Previously
-
-These skills were published as three separate repositories, now archived and
-pointing here:
-
-- `claude-audit-skills`
-- `claude-github-vuln-remediation-skill`
-- `claude-ralph-loop-skill`
+Restart Claude Code, then type the command. The category README linked beside each
+table covers that skill's options, output and prerequisites.
 
 ## License
 

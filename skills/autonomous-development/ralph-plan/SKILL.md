@@ -8,6 +8,8 @@ allowedTools:
   - Edit
   - Glob
   - Grep
+metadata:
+  summary: "Interactive builder for a PRD with checkboxed tasks and acceptance criteria"
 ---
 
 You are helping the user create a PRD (Product Requirements Document) for use with the Ralph autonomous coding loop. Ralph will read the PRD and work through tasks one at a time, so the PRD must be precise, well-ordered, and broken into small tasks.

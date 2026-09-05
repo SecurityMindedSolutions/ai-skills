@@ -7,6 +7,8 @@ allowedTools:
   - Glob
   - Grep
   - Bash
+metadata:
+  summary: "Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD"
 ---
 
 # Security Audit Orchestrator

@@ -1,7 +1,7 @@
 ---
 description: "Comprehensive front-end architecture audit with parallel sub-agents. Checks design tokens, components, accessibility, performance, security, and best practices against enterprise standards. Use this skill whenever the user wants to review their frontend, check UI quality, assess component patterns, verify accessibility, or improve their web app - even if they don't explicitly say 'audit'."
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Task
   - Read
   - Glob

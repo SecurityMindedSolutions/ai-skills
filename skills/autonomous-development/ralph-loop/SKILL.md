@@ -1,7 +1,7 @@
 ---
 description: Autonomous task runner that works through a PRD one task at a time. Launches ralph.sh in the background and monitors progress.
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Bash
   - Read
   - TaskOutput

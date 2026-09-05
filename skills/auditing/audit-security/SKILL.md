@@ -1,7 +1,7 @@
 ---
 description: "Comprehensive security audit with parallel sub-agents. Runs code, API, frontend, multi-tenancy (tenant-isolation), secrets, dependencies, terraform, and CI/CD modules against a target directory. Use this skill whenever the user asks to check for vulnerabilities, do a security review, pen test prep, compliance check, or wants to know if their code is secure - even if they don't say 'audit' explicitly."
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Task
   - Read
   - Glob

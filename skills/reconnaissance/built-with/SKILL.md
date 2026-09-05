@@ -13,7 +13,7 @@ description: >-
   "recon" or "platform analysis". Everything runs via curl/Python and headless
   Chrome; no browser window opens.
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Bash
   - Read
   - Write

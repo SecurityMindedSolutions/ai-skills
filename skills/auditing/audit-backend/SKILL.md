@@ -1,7 +1,7 @@
 ---
 description: "Backend application architecture audit. Checks handler hygiene, service layer patterns, data access, data contracts, error handling, code quality, testing, observability, and security against enterprise standards. Use this skill whenever the user wants to review backend code quality, check API patterns, validate architecture, or assess whether their backend follows best practices - even if they don't explicitly say 'audit'."
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Task
   - Read
   - Glob

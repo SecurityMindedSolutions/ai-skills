@@ -1,7 +1,7 @@
 ---
 description: Interactive PRD builder for the Ralph autonomous coding loop. Guides users through creating structured plans with explicit file paths.
 user-invocable: true
-allowedTools:
+allowed-tools:
   - Bash
   - Read
   - Write

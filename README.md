@@ -1,14 +1,16 @@
 # AI Skills
 
 Skills that let a coding agent do real work on a codebase: audit one you inherited,
-clear a vulnerability backlog, take a long implementation and run it unattended, or
-say what it found in language the reader can actually use.
+clear a vulnerability backlog, map what a web app is built on, run a long
+implementation unattended, or say the last message again for a different reader.
 
-Each skill is a directory holding a `SKILL.md` and whatever modules, templates or
-scripts it needs. They are written for [Claude
-Code](https://docs.anthropic.com/en/docs/claude-code) today, and the format is plain
-markdown plus shell, so most of it ports to any agent that can read instructions and
-run tools.
+Each skill is a directory holding a `SKILL.md` plus whatever modules, references,
+templates or scripts it needs. They are written for [Claude
+Code](https://docs.anthropic.com/en/docs/claude-code) and lean on it: the three audits
+and the vulnerability remediator dispatch parallel sub-agents, and every skill outside
+`communication/` reads its own bundled files from `~/.claude/skills/`. The four
+communication skills are plain instructions with no such dependency, and will work in
+any agent that can follow them.
 
 ## Skills
 
@@ -65,26 +67,35 @@ README carries the full detail: usage, options, output format and customization.
 
 ## Install
 
-Copy the skills you want into your Claude Code skills directory:
+Skills go in your **personal** skills directory. Most of them resolve their own bundled
+files through `~/.claude/skills/<name>/`, so install there rather than into a project's
+`.claude/skills/`.
 
 ```bash
 git clone https://github.com/SecurityMindedSolutions/ai-skills.git
+mkdir -p ~/.claude/skills
 cp -R ai-skills/skills/auditing/audit-security ~/.claude/skills/
 ```
+
+The `mkdir -p` matters. Without it, `cp -R` creates a directory named `skills` holding
+that one skill's *contents*, and nothing ever loads.
 
 Or symlink, so a `git pull` updates the skill in place:
 
 ```bash
+mkdir -p ~/.claude/skills
 ln -s "$PWD/ai-skills/skills/auditing/audit-security" ~/.claude/skills/audit-security
 ```
 
-A skill lives at the directory named in its category table above. Copy the whole directory,
-not just its `SKILL.md` - the audit skills keep their checks in `modules/` and their shared
-validation method in `references/`, and the Ralph loop ships `ralph.sh` alongside its
-templates.
+Copy the whole directory, not just its `SKILL.md`: the audit skills keep their checks
+in `modules/` and their shared validation method in `references/`, and the Ralph loop
+ships `ralph.sh` alongside its templates. The directory name is the command name, so
+keep it as it is.
 
-Restart Claude Code, then type the command. The category README linked beside each
-table covers that skill's options, output and prerequisites.
+Start a new Claude Code session, then type the command. The category README linked
+beside each table above covers that skill's options and output. Two need outside tools:
+`/github-remediate-vulns` needs the `gh` CLI, and `/built-with` needs Python 3, `curl`
+and Chrome.
 
 ## License
 

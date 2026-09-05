@@ -8,6 +8,8 @@ allowedTools:
   - Grep
   - Bash
   - WebFetch
+metadata:
+  summary: "Reviews client-side architecture: design tokens, components, accessibility, performance, SEO"
 ---
 
 # Front-End Architecture Audit Orchestrator

@@ -7,6 +7,8 @@ allowedTools:
   - Glob
   - Grep
   - Bash
+metadata:
+  summary: "Reviews server-side patterns: handler hygiene, service layers, data access, error handling, observability"
 ---
 
 # Backend Application Architecture Audit

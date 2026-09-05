@@ -19,6 +19,8 @@ allowedTools:
   - Write
   - Edit
   - Artifact
+metadata:
+  summary: "Passive, headless recon of a web app's frontend, mapping its third-party vendors, backend hosts and API surface from public JS into a plain-English dossier"
 ---
 
 # Built-With

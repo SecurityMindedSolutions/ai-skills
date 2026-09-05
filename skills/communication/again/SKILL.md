@@ -2,6 +2,8 @@
 name: again
 description: Say the last message again in plain English, keeping every name and number exact.
 disable-model-invocation: true
+metadata:
+  summary: "Restates the last message in plain English, keeping every path, line number and count exactly as written"
 ---
 
 Restate your last message plainly. Short sentences, everyday words, like one human

@@ -2,6 +2,8 @@
 name: elim
 description: Explain the last message like I am a manager. Plain English, no code names and no shop talk.
 disable-model-invocation: true
+metadata:
+  summary: "Restates the last message for a manager: no code names, no shop talk, and no invented urgency"
 ---
 
 Say your last message again for a manager. Someone senior who does not work in

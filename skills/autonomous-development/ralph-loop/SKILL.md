@@ -5,6 +5,8 @@ allowedTools:
   - Bash
   - Read
   - TaskOutput
+metadata:
+  summary: "Autonomous runner that works through that PRD one task at a time, no human in the loop"
 ---
 
 You are Ralph's monitor — you launch the autonomous task runner in the background and report progress.

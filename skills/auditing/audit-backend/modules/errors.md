@@ -43,3 +43,4 @@ Evaluate whether the application uses the framework's error handling consistentl
 ### ERR-8: Errors in async/background operations are logged, not swallowed
 - If the application does any async work (background tasks, fire-and-forget API calls, optimistic updates), failures must be logged.
 - Look for: bare `except: pass`, `try/except` blocks that catch and ignore errors, missing error logging in background operations.
+- See the data-access module's DA-9 for the deletion-specific version of this same swallow pattern — a delete failure that's logged but not propagated is worse than a generic swallowed error, because the caller and any downstream reconciliation now believe the data is gone.

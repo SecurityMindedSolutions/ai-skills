@@ -22,7 +22,7 @@ proves it is reachable.
 
 | Module | What it scans |
 |---|---|
-| **code** | Injection (SQL, command, template), auth/authz gaps, weak crypto, business logic flaws, SSRF, deserialization, path traversal, file-upload and container-format confusion |
+| **code** | Injection (SQL, command, template), auth/authz gaps, weak crypto, business logic flaws, SSRF, deserialization, path traversal, file-upload and container-format confusion, deletion integrity (partial batch failures, swallowed delete errors, versioned/soft-delete stores, destructive migrations) |
 | **api** | Endpoint auth levels, credential/session revocation propagation through auth caches, fail-open authorization on a missing associated record, input validation, mass assignment, data exposure, filtered-vs-unfiltered accessor bypass, CORS, rate limiting (including self-healing claims tested against a looping trigger), HTTP security headers, CSRF incl. mutating GET routes, unauthenticated content-publication gating, anti-automation/CAPTCHA-enforce, email-action link safety |
 | **frontend** | XSS (`dangerouslySetInnerHTML`, DOM sinks), client-side storage of secrets, postMessage without origin checks, CSP issues |
 | **multi-tenancy** | Tenant-id provenance, tenant-scoped data access, central fail-closed enforcement, cross-tenant BOLA/IDOR, tenant enumeration oracles, cross-tenant resource sharing, create/delete parity, client-DB-SDK boundary (runs only when the app is multi-tenant) |
@@ -169,7 +169,7 @@ business logic, data access, and tests.
 |---|---|
 | **architecture** | Handler thickness, service layer separation, dependency injection, framework coupling |
 | **errors** | Error handling patterns, catch-all handlers, error propagation, user-facing error messages |
-| **data-access** | Repository patterns, query safety, connection management, transaction handling |
+| **data-access** | Repository patterns, query safety, connection management, transaction handling, delete verification and destructive-migration scoping |
 | **data-contracts** | Request/response schemas, validation, serialization, API contract consistency |
 | **code-quality** | Function length, naming conventions, dead code, complexity, DRY violations |
 | **testing** | Test coverage patterns, mocking strategies, assertion quality, edge case coverage |

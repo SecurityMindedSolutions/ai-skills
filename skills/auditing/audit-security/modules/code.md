@@ -179,6 +179,110 @@ unvalidated *full* URL; it's about a supposedly-safe *path fragment* being trust
 - Are event-driven function inputs treated with the same suspicion as HTTP request inputs?
 - Are message attributes from event sources validated (not used directly in queries or commands)?
 
+### 12. Deletion Integrity — Data Silently Not Removed, or Removed More/Less Than Intended (dedicated check, do not skip)
+<!-- Standards: OWASP-Web-A04:2025, CWE-459, CWE-703 -->
+
+Applies to any code path whose job is to permanently remove data — a user/tenant
+"delete my data" or retention/compliance flow, a credential/enrollment revoke
+flow, a cache/cleanup step, or a destructive maintenance script/migration — in
+ANY language/framework. This is a distinct, deliberate
+check because a deletion path that *looks* successful (no exception thrown, a
+success log line, HTTP 200) can still have left the data recoverable or never
+actually removed it, and this reliably escapes generic error-handling review
+because the code technically "handles" the response — it just doesn't act on
+what that response says.
+
+1. Find every call site that deletes data, across every storage type the
+   codebase touches — relational and document databases, key-value/wide-column
+   stores, object/blob storage, caches, search/vector indexes, message queues,
+   file systems, and third-party APIs that hold data on the app's behalf:
+   single-item deletes (a `deleteObject`/`deleteItem`/`remove`-style SDK call,
+   ORM `.destroy()`/`.delete()`, `unlink`/`rm`), bulk/batch deletes (a
+   multi-key `deleteObjects`-style call, a batch-write API carrying delete
+   requests, `deleteMany`/`bulkDelete`, index/collection-wide purges), and raw
+   `DELETE FROM`/`TRUNCATE`/`DROP` statements (including inside migrations).
+2. For each, check whether the call's result is a **bulk/batch response with
+   per-item partial-failure semantics** — many "delete N things" APIs return a
+   success status even when some items in the batch failed to delete, and
+   report those failures only in a field on the response (an `Errors` list, an
+   `Unprocessed*` set, an `Unsuccessful*`/`Failed*` list, a per-item status
+   array, a `deletedCount` lower than the requested count). If the code never
+   reads that field and acts on it (retry, raise, alert), a partial failure is
+   silently reported as a full success. This is NOT the same finding as "no
+   try/catch" — the call can be perfectly exception-safe and still have this
+   gap, because the client library doesn't throw for a partial batch failure.
+   When you don't know a given SDK's response shape, look it up rather than
+   assuming it throws.
+3. Check whether a delete's return value or thrown error is actually
+   propagated to the caller, or whether it's caught, logged, and swallowed
+   while the caller proceeds as if it succeeded (`.catch(() => void 0)`,
+   `.catch(err => logger.warn(err))` with no rethrow, a helper function that
+   returns `false`/`None` on failure that its caller never checks). Trace the
+   full call chain, not just the immediate function — the immediate function
+   may correctly throw while an outer wrapper (a `Promise.all(...).catch(...)`
+   around a batch of pages, a queue consumer's top-level handler) is what
+   actually absorbs it.
+4. If the delete targets a store that can retain prior versions or soft-delete
+   (versioned object/blob storage, databases with point-in-time or time-travel
+   reads, soft-delete/trash retention, snapshots, replicas, backups), check
+   whether that retention is **actually enabled on the destination** (check
+   IaC for that bucket/table/database if available in-repo; otherwise flag as
+   needing infra confirmation rather than asserting). If it is, a plain delete
+   call that doesn't target the specific version (e.g., no version identifier
+   on a versioned-bucket delete) only writes a tombstone/delete marker — the
+   prior bytes are still physically present and retrievable through the
+   store's versioned-read API. For any deletion described as satisfying a
+   retention, compliance, or "right to be forgotten" requirement, this is a
+   real gap between "looks deleted" and "is actually gone," and is worth
+   flagging even without IaC access to confirm, provided you say so
+   explicitly as unconfirmed.
+5. Check ordering and atomicity across multi-step or multi-backend deletes
+   (e.g., delete-from-blob-storage-then-delete-from-database,
+   delete-from-database-then-evict-cache, delete-from-primary-store-and-
+   secondary-index-in-parallel). If there's no transaction, outbox pattern, or
+   compensating rollback, ask: what state does the system end up in if step 1
+   succeeds and step 2 fails? Which is worse — an orphaned object nobody
+   points to any more, or a live reference to something already deleted?
+   Either can be the wrong answer depending on the domain (retention/
+   compliance deletion should prefer "data gone" over "record consistent";
+   general application cleanup often prefers the reverse) — don't assume the
+   ordering doesn't matter.
+6. Check any idempotency/short-circuit guard on a delete/cleanup routine ("if
+   the row is already gone, return early / no-op"). Ask: if this routine is
+   retried after a PARTIAL external failure (e.g., a downstream commit
+   actually succeeded but the caller never received confirmation and
+   retries), does the guard's early-return skip cleanup steps that hadn't run
+   yet on the first attempt? A guard keyed on "is the primary record gone" can
+   wrongly signal "fully done" when only that one step of a multi-step
+   cleanup actually completed.
+7. Check for a **silent zero-match no-op**: a delete-by-prefix, delete-by-
+   query, or delete-by-filter operation that matches zero items just
+   logs/returns success with no cross-check against an expected count (e.g.,
+   "we expected to find and remove N items for this key, we found 0 — that's
+   suspicious, not clean"). A wrong or drifted key/prefix/filter can make a
+   real deletion silently do nothing while looking identical to "there was
+   nothing to delete."
+8. For destructive `DELETE`/`TRUNCATE` statements, especially inside a schema
+   migration or maintenance script run automatically against live data: is
+   the WHERE clause scoped to only the intended rows (by id, by a reviewed
+   drop-list/CTE), or does it delete broadly (`WHERE id != <one-hardcoded-
+   id>`, no WHERE at all) with no transaction wrapper, no dry-run, and no way
+   to restore via the paired down-migration/rollback? A migration that
+   includes a bulk delete as a side effect of an unrelated schema change
+   (e.g., "add a column" also silently truncating a table) is a red flag
+   regardless of whether the delete was intentional — it needs the same
+   scrutiny as a standalone destructive script, because migrations typically
+   run unattended against every environment including production.
+9. Config that determines *what* gets deleted — a bucket name, table name, or
+   key prefix built from a template string and an env var — read once at
+   process/module start rather than resolved per call: if that config is
+   wrong, missing, or drifts, does the delete call fail loudly (good) or
+   quietly target/match nothing (bad, ties back to #7)?
+
+None of this requires the word "delete" to be nearby — deletion-adjacent
+language includes unenroll, revoke, forget, purge, retention, expire,
+GC/garbage-collect, cleanup, evict, truncate, and compact.
+
 ## Scanning Approach
 
 1. Read architecture docs (CLAUDE.md, README.md) to understand frameworks, auth patterns, and data flows
@@ -273,4 +377,18 @@ revoke|revoked|deactivate|invalidat.*cache
 # Self-heal/reconciliation vs. rate limiting (see api module 5b)
 resync|reconcil|self.?heal|cron.*(recreate|resync|repair)
 ratelimit|rate.limit|throttl
+
+# Deletion integrity (see section 12) — delete call sites, any store/SDK/language
+[Dd]elete(Objects?|Items?|Many|All|Batch|Bulk|Vectors?|Documents?|Blobs?|Records?|Entries)\b|delete_(objects?|items?|many|batch|bulk|blobs?)\(|[Bb]atch[Ww]rite|bulk_?[Dd]elete|purge\(|\.destroy\(|deleteMany\(|\bunlink\(|rm -rf
+DELETE FROM|TRUNCATE|DROP TABLE
+# Delete failures swallowed
+\.catch\(\s*\(\)\s*=>\s*(void 0|undefined|\{\})\)|\.catch\((console|logger)\.(warn|error|log)\)|except\s*:\s*pass|except .*:\s*pass|rescue\s*(=>|$)|_ = .*[Dd]elete
+# Partial-failure fields on batch responses — grep the DELETE call sites above and confirm one of these is read afterward
+\.Errors\b|Unprocessed[A-Za-z]*|Unsuccessful[A-Za-z]*|Failed(Items|Keys|Ids|Entries)|deletedCount|deleted_count
+# Versioned/soft-delete stores — a delete with no version target only writes a tombstone
+[Vv]ersioning|versioned|version_?[Ii]d|soft_?delete|deleted_at|deletedAt|tombstone|delete_?marker
+# Destructive statements inside migrations/maintenance scripts (scope + transaction + down-migration)
+(migrat|migration|seed|maint|cleanup|script).*(DELETE FROM|TRUNCATE|DROP)
+# Deletion-adjacent language that never says "delete"
+unenroll|revoke|forget|purge|retention|expire|garbage.?collect|\bgc\b|cleanup|evict|compact
 ```

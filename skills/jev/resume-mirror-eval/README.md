@@ -59,10 +59,11 @@ The cost is small: about a cent per hundred resumes, detailed under
 - It scores every resume file for how closely its *wording* tracks the posting.
 - It marks the files a person should read first and says why in plain English.
 - You get a sorted spreadsheet. Here is the end result on the fictional set in
-`mock-data/` (full files in [`mock-data/example-output/`](mock-data/example-output/)):
+`mock-data/`, trimmed to the first evidence bullet per row to fit the page (full
+files, with every bullet and the notes, in [`mock-data/example-output/`](mock-data/example-output/)):
 
 
-| Needs human review | File | Mirror score (Jev) | Evidence (first line) |
+| Needs human review | File | Mirror score (Jev) | Evidence |
 |---|---|---|---|
 | **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a strong opinion o... |
 | **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability principles, in... |

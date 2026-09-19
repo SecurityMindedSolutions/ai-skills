@@ -68,10 +68,12 @@ then create an API key at [console.typesafe.ai/keys](https://console.typesafe.ai
 The skill does not pull logs and does not say how to. The calling agent
 works that out with the user (a cloud CLI, an MCP server, Athena, a SIEM
 export, a file) and writes one JSON line per request in the schema in
-[`references/schema.md`](references/schema.md). Five fields are required
-(`ts`, `ip`, `method`, `path`, `status`); host, query, User-Agent, referer,
-WAF action and rule, ASN, country, JA3/JA4, sizes, latency and target add
-signals. The schema page carries a field-source table for GCLB, ALB and AWS
+[`references/schema.md`](references/schema.md). Four fields are required
+(`ts`, `ip`, `method`, `path`); status, host, query, User-Agent, referer,
+WAF action, rule and labels, ASN, country, JA3/JA4, sizes, latency and
+target add signals. A WAF-only export with no response status is fine;
+the profile says what it cannot see and the verdicts, labels, paths and
+pacing carry the judgment. The schema page carries a field-source table for GCLB, ALB and AWS
 WAF. The agent also writes one paragraph about the site, which is what
 "knows this application" is judged against.
 

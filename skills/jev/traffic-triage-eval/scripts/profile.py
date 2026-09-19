@@ -44,15 +44,21 @@ def build_profile(ip: str, events: list[dict]) -> dict:
     gaps = [(b - a).total_seconds() for a, b in zip(times, times[1:])]
     minutes = Counter(t.strftime("%Y-%m-%dT%H:%M") for t in times)
     peak_rpm = max(minutes.values())
-    status = Counter(e["status"] for e in events)
-    classes = Counter(f"{e['status'] // 100}xx" if e["status"] else "0xx" for e in events)
+    # status is optional: WAF logs usually carry the verdict but not the backend's answer
+    with_status = [e for e in events if e.get("status") is not None]
+    status = Counter(e["status"] for e in with_status)
+    classes = Counter(f"{e['status'] // 100}xx" if e["status"] else "0xx" for e in with_status)
     methods = Counter(e["method"] for e in events)
     hosts = Counter(e.get("host", "") for e in events)
     paths = Counter(e["path"] for e in events)
     uas = Counter(e.get("ua", "") for e in events)
     ua_classes = Counter(sig.ua_class(e.get("ua")) for e in events)
     waf = Counter(e.get("waf_action", "none") for e in events)
-    waf_rules = Counter(e.get("waf_rule") for e in events if e.get("waf_action") in ("deny", "throttle", "challenge"))
+    waf_rules = Counter(e.get("waf_rule") for e in events if e.get("waf_action") in ("deny", "throttle", "challenge", "count"))
+    waf_labels = Counter(lab for e in events for lab in e.get("waf_labels", []))
+    attack_labels = Counter(lab for lab in waf_labels.elements() if sig.WAF_ATTACK_LABEL.search(lab))
+    bot_labels = Counter(lab for lab in waf_labels.elements() if sig.WAF_BOT_LABEL.search(lab))
+    reputation_labels = Counter(lab for lab in waf_labels.elements() if sig.WAF_REPUTATION_LABEL.search(lab))
     asns = Counter(e.get("asn") for e in events if e.get("asn") is not None)
     countries = Counter(e.get("country") for e in events if e.get("country"))
     ja3 = Counter(e.get("ja3") for e in events if e.get("ja3"))
@@ -97,14 +103,14 @@ def build_profile(ip: str, events: list[dict]) -> dict:
             unmatched[path] += 1
         static += sig.is_static(path)
         # a 404 on /login is a probe for an endpoint that is not there, not a credential attempt
-        auth += sig.is_auth(path) and e["status"] not in (404, 405, 0)
+        auth += sig.is_auth(path) and e.get("status") not in (404, 405, 0)
         health += sig.is_health(path)
         raw_ip_host += sig.is_raw_ip_host(e.get("host"))
         referer += bool(e.get("referer"))
         templates[sig.enumeration_shape(path)].add(path)
         for key, value in sig.query_params(query):
             templates[f"{path}?{key}="].add(value)
-        if e["status"] in (404, 400, 403, 401, 405):
+        if e.get("status") in (404, 400, 403, 401, 405):
             error_paths[path] += 1
         if query:
             queries[_clip(query, MAX_QUERY_CHARS)] += 1
@@ -117,6 +123,7 @@ def build_profile(ip: str, events: list[dict]) -> dict:
     compresses = len(tmpl) <= 0.8 * distinct_paths
     p404 = status.get(404, 0)
     err4 = classes.get("4xx", 0)
+    ns = len(with_status)
 
     profile = {
         "ip": ip,
@@ -139,13 +146,16 @@ def build_profile(ip: str, events: list[dict]) -> dict:
                   "requests_with_raw_ip_host": raw_ip_host},
         "methods": dict(methods.most_common()),
         "responses": {
+            "requests_with_status": ns,
             "by_class": dict(classes),
             "top_statuses": dict(status.most_common(6)),
-            "not_found_rate": round(p404 / n, 2),
-            "client_error_rate": round(err4 / n, 2),
-            "summary": _response_words(n, p404, err4, classes.get("5xx", 0), classes.get("2xx", 0)),
+            "not_found_rate": round(p404 / ns, 2) if ns else None,
+            "client_error_rate": round(err4 / ns, 2) if ns else None,
+            "summary": _response_words(n, ns, p404, err4, classes.get("5xx", 0), classes.get("2xx", 0)),
         },
         "waf": {"actions": dict(waf), "rules_hit": _top(waf_rules, 5),
+                "labels": _top(waf_labels, 10),
+                "labels_summary": _label_words(attack_labels, bot_labels, reputation_labels, n),
                 "summary": _waf_words(waf)},
         "user_agents": {
             "distinct": len(uas),
@@ -191,6 +201,12 @@ def build_profile(ip: str, events: list[dict]) -> dict:
     # Facts code is sure about, for the report and for rule floors in classify.py.
     declared_bot_uas = sum(1 for ua in uas if sig.ua_class(ua) in ("crawler", "ai_agent", "monitor"))
     profile["code_signals"] = _code_signals(profile, ua_classes, probe_hits, payload_hits, waf, raw_ip_host, n, declared_bot_uas)
+    if attack_labels:
+        profile["code_signals"]["waf_attack_labels"] = (f"{sum(attack_labels.values())} requests carry WAF attack-signature labels: "
+                                                         + ", ".join(f"{_short_label(k)}={v}" for k, v in attack_labels.most_common(4)))
+    if reputation_labels:
+        profile["code_signals"]["waf_reputation_labels"] = ("WAF IP-reputation or anonymizer labels: "
+                                                             + ", ".join(_short_label(k) for k, _ in reputation_labels.most_common(3)))
     return profile
 
 
@@ -213,6 +229,8 @@ def _code_signals(p: dict, ua_classes: Counter, probes: Counter, payloads: Count
         out["waf_denied"] = f"{waf['deny']} requests denied by the WAF"
     if waf.get("throttle", 0):
         out["waf_throttled"] = f"{waf['throttle']} requests rate-limited by the WAF"
+    if waf.get("count", 0):
+        out["waf_counted"] = f"{waf['count']} requests matched a WAF rule running in count (monitor) mode"
     if raw_ip_host:
         out["raw_ip_host"] = f"{raw_ip_host} requests addressed the server by IP instead of a hostname"
     if p["paths"]["auth_endpoint_requests"] >= 20:
@@ -280,7 +298,12 @@ def _volume_words(n: int, span_s: float, peak: int, gaps: list[float]) -> str:
     return f"{size} requests {span}, {pace}"
 
 
-def _response_words(n: int, p404: int, err4: int, err5: int, ok: int) -> str:
+def _response_words(n: int, ns: int, p404: int, err4: int, err5: int, ok: int) -> str:
+    if ns == 0:
+        return ("no response statuses in this source (a WAF or edge log that records the verdict but not the "
+                "backend's answer), so success and not-found cannot be told apart here")
+    if ns < n:
+        return _response_words(ns, ns, p404, err4, err5, ok) + f" (statuses known for {ns} of {n} requests)"
     if p404 / n >= 0.6:
         return f"mostly not-found: {p404} of {n} requests returned 404"
     if err4 / n >= 0.5:
@@ -290,6 +313,25 @@ def _response_words(n: int, p404: int, err4: int, err5: int, ok: int) -> str:
     if ok / n >= 0.8:
         return f"mostly successful: {ok} of {n} requests returned 2xx"
     return "a mix of successful and failed requests"
+
+
+def _short_label(label: str) -> str:
+    """awswaf:managed:aws:core-rule-set:SQLi_QueryArguments -> core-rule-set:SQLi_QueryArguments"""
+    parts = label.split(":")
+    return ":".join(parts[-2:]) if len(parts) > 2 else label
+
+
+def _label_words(attack: Counter, bot: Counter, reputation: Counter, n: int) -> str:
+    if not (attack or bot or reputation):
+        return "no WAF labels recorded"
+    parts = []
+    if attack:
+        parts.append(f"attack signatures on {sum(attack.values())} of {n} requests ({', '.join(_short_label(k) for k, _ in attack.most_common(3))})")
+    if bot:
+        parts.append(f"bot-control labels ({', '.join(_short_label(k) for k, _ in bot.most_common(3))})")
+    if reputation:
+        parts.append(f"IP reputation or anonymizer labels ({', '.join(_short_label(k) for k, _ in reputation.most_common(2))})")
+    return "; ".join(parts)
 
 
 def _waf_words(waf: Counter) -> str:
@@ -339,8 +381,8 @@ def _top(counter: Counter, k: int) -> list[dict]:
 
 
 def _status_for(events: list[dict], path: str) -> str:
-    c = Counter(e["status"] for e in events if e["path"] == path)
-    return "/".join(str(s) for s, _ in c.most_common(2))
+    c = Counter(e["status"] for e in events if e["path"] == path and e.get("status") is not None)
+    return "/".join(str(s) for s, _ in c.most_common(2)) or "?"
 
 
 def _clip(s: str, n: int) -> str:

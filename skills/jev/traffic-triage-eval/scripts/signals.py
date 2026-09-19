@@ -99,6 +99,15 @@ PAYLOAD_FAMILIES: dict[str, re.Pattern] = {
     "scanner_marker": re.compile(r"nuclei|acunetix|nikto|sqlmap|wpscan|\{\{interactsh|oast\.|burpcollab|dnslog|ceye\.io|canarytokens", re.I),
 }
 
+# --- WAF label families (AWS managed rule groups; other WAFs can use the same words)
+WAF_ATTACK_LABEL = re.compile(r"SQLi|CrossSiteScripting|XSS|GenericLFI|GenericRFI|LFI|RFI|SSRF|EC2MetaData|Log4J|JavaDeserialization|"
+                              r"PHP|ExploitablePaths|RestrictedExtensions|UnixShell|WindowsShell|PROPFIND|SizeRestrictions|"
+                              r"NoUserAgent|UserAgent_BadBots|known-bad-inputs|sql-database|linux-os|posix-os|windows-os|php-app|"
+                              r"wordpress-app|admin-protection", re.I)
+WAF_BOT_LABEL = re.compile(r"bot-control|bot:name|bot:category|signal:(non_browser_user_agent|automated_browser|known_bot_data_center)|"
+                           r"targeted:aggregate|token:absent", re.I)
+WAF_REPUTATION_LABEL = re.compile(r"IPReputation|ReconnaissanceList|DDoSList|AnonymousIPList|HostingProviderIPList|TorNode|anonymous-ip", re.I)
+
 AUTH_PATH = re.compile(r"/(login|signin|sign-in|auth|oauth|token|password|mfa|totp|otp|2fa|register|signup|session|sso|saml)\b", re.I)
 STATIC_EXT = re.compile(r"\.(js|mjs|css|map|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|avif|mp4|webm|json|txt|xml)$", re.I)
 HEALTH_PATH = re.compile(r"/(health|healthz|ready|readyz|live|livez|ping|status|_ah/|heartbeat|up)$", re.I)

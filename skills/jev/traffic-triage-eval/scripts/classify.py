@@ -61,12 +61,17 @@ def decide(s: dict, code: dict[str, str], requests: int) -> tuple[str, list[str]
     attack_floor = False
     cat = s["traffic_class"]
     if s["traffic_class_confidence"] < q.CHOICE_MIN_CONFIDENCE:
-        reasons.append(f"choice confidence {s['traffic_class_confidence']} below {q.CHOICE_MIN_CONFIDENCE}")
-        cat = "unclear"
-    if "payloads" in code and s["app_aware"] >= q.PAYLOAD_PLUS_APP_AWARE:
+        probs = s.get("traffic_class_probabilities", {})
+        harmless = sum(probs.get(k, 0) for k in q.HARMLESS)
+        if cat in q.HARMLESS and harmless >= q.HARMLESS_SPLIT_OK:
+            reasons.append(f"low choice confidence {s['traffic_class_confidence']} but harmless either way ({harmless:.2f})")
+        else:
+            reasons.append(f"choice confidence {s['traffic_class_confidence']} below {q.CHOICE_MIN_CONFIDENCE}")
+            cat = "unclear"
+    if ("payloads" in code or "waf_attack_labels" in code) and s["app_aware"] >= q.PAYLOAD_PLUS_APP_AWARE:
         cat = _raise(cat, "malicious")
         attack_floor = True
-        reasons.append("exploit payloads against routes that exist here")
+        reasons.append("exploit payloads or WAF attack signatures against routes that exist here")
     if s["credential_attack"] >= q.CREDENTIAL_FLOOR and s["app_aware"] >= q.CREDENTIAL_MIN_APP_AWARE \
             and ("waf_denied" in code or "waf_throttled" in code or "auth_volume" in code):
         cat = _raise(cat, "malicious")

@@ -28,6 +28,7 @@ SIMPLE_COLUMNS = [
     ("Peak/min", "peak_rpm", 9),
     ("404 rate", "not_found_rate", 9),
     ("WAF deny", "waf_deny", 9),
+    ("WAF labels", "waf_labels_text", 40),
     ("Signals (Jev)", "signals_text", 44),
     ("Code signals", "code_signals_text", 56),
     ("Top UA", "top_ua", 50),

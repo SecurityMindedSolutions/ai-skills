@@ -58,14 +58,14 @@ QUESTIONS = {
     "exploit_payloads": {
         "type": "noul",
         "instructions": (
-            "Does `profile.payloads` or `profile.queries.sample` show strings crafted to "
-            "exploit a web application: SQL injection, cross-site scripting, path traversal, "
-            "command or template injection, JNDI lookups, server-side request forgery targets, "
-            "serialized objects, or scanner callback markers?"
+            "Does `profile.payloads`, `profile.queries.sample` or `profile.waf.labels_summary` "
+            "show strings or WAF signature matches crafted to exploit a web application: SQL "
+            "injection, cross-site scripting, path traversal, command or template injection, JNDI "
+            "lookups, server-side request forgery targets, serialized objects, or scanner callback markers?"
         ),
         "criteria": {
-            "true": "At least one request carries such a string in its path or query.",
-            "false": "Paths and queries are ordinary parameters and values; `profile.payloads.summary` says none.",
+            "true": "At least one request carries such a string in its path or query, or the WAF labelled it with an attack signature.",
+            "false": "Paths and queries are ordinary parameters and values; `profile.payloads.summary` says none and the WAF attached no attack labels.",
         },
     },
     "credential_attack": {
@@ -77,7 +77,7 @@ QUESTIONS = {
             "a few times would produce?"
         ),
         "criteria": {
-            "true": "Dozens or more requests to authentication endpoints, many rejected with 401/403/429 or rate-limited by the WAF.",
+            "true": "Dozens or more requests to authentication endpoints, many rejected with 401/403/429 or rate-limited by the WAF; if the source has no statuses, judge from the volume and the WAF verdicts alone.",
             "false": "Few or no authentication requests, or a normal sign-in pattern of a handful of requests.",
         },
     },
@@ -124,7 +124,7 @@ QUESTIONS = {
             "an MCP client, a browsing or computer-use agent, or a class of `ai_agent`)?"
         ),
         "criteria": {
-            "true": "One consistent User-Agent naming an AI company's crawler or agent, an AI tool, or an MCP client, and the requests read public content or use the API normally.",
+            "true": "One consistent User-Agent naming an AI company's crawler or agent, an AI tool, or an MCP client, or a WAF bot-control label naming an AI crawler in `profile.waf.labels`, and the requests read public content or use the API normally.",
             "false": "No AI-related User-Agent, or the IP rotates through many bot names (`profile.code_signals.ua_spoofed_bots`) while probing for files and exploits, which is a scanner wearing AI-crawler names, not an AI agent.",
         },
     },
@@ -159,7 +159,7 @@ QUESTIONS = {
             "a high not-found rate in `profile.responses`?"
         ),
         "criteria": {
-            "true": "A scanner User-Agent, or many probe families and payload types in a short window with mostly 404 responses.",
+            "true": "A scanner User-Agent, or many probe families and payload types in a short window, usually with mostly 404 responses where statuses are known.",
             "false": "Nothing suggests a scanning tool.",
         },
     },
@@ -181,6 +181,11 @@ QUESTIONS = {
 # --- Composition rules (code decides; Jev's answers are inputs) ------------
 SIGNAL_THRESHOLD = 0.5        # a noul at or above this is reported in the Signals column
 CHOICE_MIN_CONFIDENCE = 0.45  # below this the category is reported as unclear + needs_review
+# ...unless the probability is merely split between the harmless classes: a
+# 45/45 benign_user vs benign_bot is not uncertainty about risk, so the top
+# one stands when the harmless classes together hold at least this much.
+HARMLESS = ("benign_user", "benign_bot")
+HARMLESS_SPLIT_OK = 0.8
 # Attention (the `!!` rows) is severity-driven: a `malicious` verdict at
 # nuisance severity is still listed and colored, but a human reads the
 # attention rows first, so those are severity >= 2 with confidence, or a

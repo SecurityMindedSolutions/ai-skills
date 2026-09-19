@@ -82,9 +82,9 @@ the site has several.
 **This skill does not retrieve logs and does not dictate how.** Work out
 with the user how to pull them: a cloud CLI, an MCP server, Athena, a SIEM
 export, a log sink, a file they already have. Whatever the source, map each
-request to one JSON line in the schema in `references/schema.md` (five
-required fields: `ts`, `ip`, `method`, `path`, `status`; the rest add
-signals) and write the file into a staging folder (your scratchpad, or
+request to one JSON line in the schema in `references/schema.md` (four
+required fields: `ts`, `ip`, `method`, `path`; `status` and the rest add
+signals, and a WAF log without statuses is fine) and write the file into a staging folder (your scratchpad, or
 `$TMPDIR/traffic-triage-eval/<timestamp>/`), never into the user's working
 tree. The schema page has a field-source table for GCLB, ALB and AWS WAF to
 speed up the mapping. If you pull only a window, pull the whole window for

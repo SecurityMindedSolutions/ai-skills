@@ -31,10 +31,12 @@ detail, so the design is:
    request. The state is `{"app": ..., "window": ..., "profile": ...}`.
 4. **`classify.py`** composes the verdict. The category is Jev's choice,
    raised (never lowered) by floors where code is certain: exploit payloads
-   plus app-awareness, credential-attack volume with WAF evidence plus
-   app-awareness, scanner or wrong-host evidence with no app-awareness. A
-   choice under the confidence gate becomes `unclear`; fewer than three
-   requests with no code signal becomes `unclear`. **Attention** (the rows a
+   or WAF attack-signature labels plus app-awareness, credential-attack
+   volume with WAF evidence plus app-awareness, scanner or wrong-host
+   evidence with no app-awareness. A choice under the confidence gate
+   becomes `unclear`, unless the probability is merely split between
+   `benign_user` and `benign_bot` (harmless either way, the top one stands);
+   fewer than three requests with no code signal becomes `unclear`. **Attention** (the rows a
    person reads first) is severity >= 2 with confidence, or an attack floor
    firing.
 
@@ -135,6 +137,22 @@ else, one flagged the `.git/config` pair, one flagged nothing.
 | Tokenization | Profile JSON runs 1.5-2.9 chars per token (slashes, hex ids, punctuation); the estimator uses 1.5 |
 | Cost | ~$0.14 per 1,000 IPs at $0.042/Mtok; output tokens are free |
 | Latency | ~330 ms median per IP; 8 workers clear 600 IPs in about half a minute |
+
+## Sources without a response status
+
+Most WAF logs record the verdict and not the backend's answer, so `status`
+is optional. Without it the profile drops the 404 rate and the
+"mostly successful / mostly rejected" sentence and says why, `auth` hits
+cannot exclude 404s, and the questions that mention response codes are
+worded to fall back to volume and WAF verdicts. Tested on a WAF-shaped
+copy of the mock set (epoch-millisecond timestamps, AWS action names, no
+status, `labels`): the two attackers still get attention, the scanner and
+Googlebot land where they did with statuses, and the browser user goes
+from a benign_user / benign_bot split to `benign_user`. AWS WAF `labels`
+are worth sending: managed rule groups label matches even in COUNT mode,
+and the profile turns attack-signature, bot-control and IP-reputation
+labels into code signals (`waf_attack_labels`, `waf_reputation_labels`) and
+a `labels_summary` sentence.
 
 ## Known limits
 

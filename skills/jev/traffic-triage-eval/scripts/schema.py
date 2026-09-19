@@ -14,19 +14,20 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
-# name -> (required, type, note). Types: str, int, float, ts.
+# name -> (required, type, note). Types: str, int, float, ts, list.
 FIELDS: dict[str, tuple[bool, str, str]] = {
     "ts":         (True,  "ts",    "request time: ISO 8601 with zone, or epoch seconds"),
     "ip":         (True,  "str",   "client IP as the edge saw it (the real client, not the LB/CDN hop)"),
     "method":     (True,  "str",   "HTTP method"),
     "path":       (True,  "str",   "URL path only, no host, no query; `url` is accepted instead and split"),
-    "status":     (True,  "int",   "HTTP response status; 0 or 499 if the edge closed it"),
+    "status":     (False, "int",   "HTTP response status; 0 if the edge closed it; omit when the source does not log it (most WAF logs)"),
     "host":       (False, "str",   "Host header / SNI as requested (raw IP hosts are a signal, keep them)"),
     "query":      (False, "str",   "raw query string without the leading `?`"),
     "ua":         (False, "str",   "User-Agent header"),
     "referer":    (False, "str",   "Referer header"),
     "waf_action": (False, "str",   "allow | deny | throttle | count | challenge | none"),
     "waf_rule":   (False, "str",   "the rule or policy that produced waf_action"),
+    "waf_labels": (False, "list",  "labels the WAF attached (AWS WAF `labels[].name`); list, or one string separated by spaces or commas"),
     "asn":        (False, "int",   "client ASN if the edge records it"),
     "country":    (False, "str",   "ISO country code if the edge records it"),
     "ja3":        (False, "str",   "TLS JA3 fingerprint"),
@@ -88,8 +89,6 @@ def normalize_row(raw: dict) -> dict:
                "host": raw.get("host") or parts.netloc}
     for name in REQUIRED:
         if raw.get(name) in (None, ""):
-            if name == "status" and raw.get(name) == 0:
-                continue
             raise RowError(f"missing required field `{name}`")
     for name, (_, kind, _) in FIELDS.items():
         value = raw.get(name)
@@ -115,6 +114,10 @@ def normalize_row(raw: dict) -> dict:
 
 
 def _coerce(name: str, kind: str, value):
+    if kind == "list":
+        if isinstance(value, str):
+            return [v for v in re.split(r"[,\s]+", value.strip()) if v]
+        return [str(v.get("name") if isinstance(v, dict) else v).strip() for v in value if v]
     if kind == "ts":
         return parse_ts(value).isoformat()
     if kind == "int":

@@ -75,6 +75,7 @@ README carries the full detail: usage, options, output format and customization.
 |---|---|
 | [`/resume-mirror-eval`](skills/jev/resume-mirror-eval/) | Scores a batch of resumes against a job description with TypeSafe Jev plus code-side text statistics, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets |
 | [`/prompt-injection-eval`](skills/jev/prompt-injection-eval/) | Scores prompts for injection with TypeSafe Jev and returns allow / review / block for a backend gate; ships a batch evaluator that measures Jev against a regex list and an LLM judge on labelled prompts |
+| [`/traffic-triage-eval`](skills/jev/traffic-triage-eval/) | Triages edge-log traffic per client IP with TypeSafe Jev: benign user / benign bot / AI agent / background scan / malicious, with severity, signals and the evidence, from a documented JSON event schema the calling agent fills from any log source |
 <!-- END SKILL INDEX -->
 
 ## Install

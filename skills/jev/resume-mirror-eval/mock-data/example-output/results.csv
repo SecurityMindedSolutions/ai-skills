@@ -1,0 +1,45 @@
+Needs human review,File,Mirror score,Verdict,Pool z,Outlier,Fit signal,Lexical,Semantic,Phrase overlap,Longest span (words),Order echo,TF-IDF cos,Keyword cov,Phrasing mirror (0-3),Requirement echo (0-3),Specifics (0-3),Generic P,Posting leak P,Career consistent P,Overall read,Read confidence,Verbatim JD sentences,Acronym cov,Words,Evidence (code),LLM notes,Error
+True,linh_nguyen.md,70.0,high,1.462,False,69.1,56.7,83.2,0.3591,80,0.58,0.4738,0.555,2.99,2.48,0.96,0.83,0.33,0.92,generated_from_posting,0.98,7,1.0,317,"- 7 JD sentences appear verbatim, e.g. ""- Build and maintain CI/CD pipelines in GitHub Actions and ArgoCD, enabling safe, frequent...""
+- Longest shared word run is 80 words: ""infrastructure as code using terraform and terragrunt with reusable modules consumed by product teams. build and maintain ci/cd ...""
+- 9 of 9 JD acronyms present (100%), all of them
+- 36% of JD 4-word phrases reused verbatim
+- Few concrete specifics: employers, dates, numbers or named systems are thin","- All nine 'What you will do' bullets from the posting appear as the current-role bullets, in the posting's order, with 'Design, build and operate' kept in the imperative
+- Employers are 'Leading Fintech Company' and 'Global Technology Solutions Firm'; no cluster counts, team sizes, incident examples or dates beyond years
+- Phone screen: ask for one specific EKS upgrade they ran and what broke",
+True,soojin_kim.md,69.3,high,1.435,False,64.6,47.9,90.7,0.2643,19,0.3404,0.4053,0.4954,2.99,2.39,0.69,0.78,0.99,0.85,generated_from_posting,0.95,1,1.0,310,"- 1 JD sentence appears verbatim, e.g. ""- Expert-level Terraform skills and a strong opinion on how to structure infrastructure as...""
+- Longest shared word run is 19 words: ""on eks. expert-level terraform skills and a strong opinion on how to structure infrastructure as code for multiple ...""
+- 9 of 9 JD acronyms present (100%), all of them
+- 26% of JD 4-word phrases reused verbatim
+- Contains job-posting phrasing (e.g. 'ideal candidate', 'you will')
+- Few concrete specifics: employers, dates, numbers or named systems are thin","- 'Key Qualifications' is the posting's 'What we are looking for' list copied bullet for bullet, and the 'Nice to Have' section is the posting's own heading
+- Current role paragraph opens 'You will design, build and operate', which is addressed to an applicant, not written by one
+- Employers are 'Fintech Startup' and 'Technology Company'; no names, locations or outcomes",
+True,petr_ivanov.md,68.6,high,1.409,False,71.5,52.4,84.7,0.3042,20,0.4172,0.4624,0.5734,2.99,2.57,0.83,0.73,0.52,0.9,generated_from_posting,0.89,2,1.0,311,"- 2 JD sentences appear verbatim, e.g. ""- Strong understanding of observability principles, including metrics, tracing and structu...""
+- Longest shared word run is 20 words: ""flux. strong understanding of observability principles including metrics tracing and structured logging. experience with service mesh technologies such ...""
+- 9 of 9 JD acronyms present (100%), all of them
+- 30% of JD 4-word phrases reused verbatim
+- Contains job-posting phrasing (e.g. 'ideal candidate', 'you will')
+- Few concrete specifics: employers, dates, numbers or named systems are thin
+- Claims nearly every requirement, including niche ones, without matching detail","- The 'Mission' section is the posting's 'About the role' paragraph rewritten in the first person, including 'raise the reliability bar across the company'
+- 'Summary of Qualifications' runs through every requirement bullet in posting order as a single paragraph
+- Two prior roles are one line each with unnamed employers",
+True,jordan_harris.md,53.2,moderate,0.825,False,64.7,33.8,72.7,0.0549,8,0.539,0.2404,0.4541,2.79,2.52,1.0,0.49,0.05,0.92,generated_from_posting,0.68,0,0.778,308,"- Longest shared word run is 8 words: ""soc 2 type ii and pci dss compliance""
+- Few concrete specifics: employers, dates, numbers or named systems are thin
+- Claims nearly every requirement, including niche ones, without matching detail","- Each posting bullet is restated with a synonym swap ('Design, build and operate' becomes 'Architected and operated') but the same nine-bullet structure and order
+- Employers are 'Confidential Financial Services Company', 'Enterprise Software Organization' and 'Technology Consultancy'; no numbers anywhere
+- Phone screen: ask which company and what the transaction volume was",
+True,arjun_singh.md,49.4,moderate,0.681,False,66.5,45.1,53.6,0.1521,12,0.6037,0.2672,0.4495,2.81,2.64,2.99,0.06,0.05,0.89,generated_from_posting,0.35,0,0.889,387,"- Longest shared word run is 12 words: ""secrets and identity using hashicorp vault and aws iam with least-privilege access""
+- 8 of 9 JD acronyms present (89%)
+- 15% of JD 4-word phrases reused verbatim","- Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
+- Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
+- Phone screen: pick two of the percentages and ask how they were measured",
+False,tyler_brooks.md,25.2,low,-0.236,False,44.5,15.6,34.7,0.005,4,0.2623,0.0917,0.2294,1.65,1.98,2.95,0.09,0.21,0.89,tailored_wording,0.36,0,0.778,251,,,
+True,marcus_chen.docx,15.5,low,-0.604,False,53.6,15.8,15.1,0.0,3,0.4098,0.0749,0.2385,0.43,2.5,3.0,0.04,0.04,0.92,genuine_fit,0.86,0,0.889,424,- 8 of 9 JD acronyms present (89%),"- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
+- Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
+- Nothing here suggests the wording came from the posting",
+False,dana_whitfield.md,14.6,low,-0.638,False,52.3,13.7,15.5,0.0025,4,0.157,0.0661,0.2431,0.46,2.41,3.0,0.03,0.03,0.93,genuine_fit,0.79,0,0.778,456,,,
+False,hanna_mueller.md,13.6,low,-0.676,False,13.3,17.1,10.0,0.0,3,0.6236,0.0473,0.133,0.52,0.4,2.88,0.08,0.06,0.9,weak_fit,0.82,0,0.333,247,,,
+False,ngozi_okafor.md,11.1,low,-0.77,False,25.5,13.1,9.1,0.0,3,0.2827,0.0621,0.1927,0.39,0.95,2.99,0.07,0.05,0.9,genuine_fit,0.86,0,0.444,261,,,
+False,riya_patel.pdf,8.4,low,-0.873,False,16.4,10.9,5.9,0.0,2,0.3321,0.0351,0.1376,0.17,0.57,2.96,0.08,0.07,0.88,weak_fit,0.44,0,0.111,236,,,
+False,andre_williams.md,6.5,low,-0.945,False,4.4,11.5,1.6,0.0,3,0.3158,0.0306,0.0872,0.05,0.0,2.97,0.04,0.04,0.92,weak_fit,1.0,0,0.111,230,,,
+False,sofia_garcia.md,3.2,low,-1.07,False,4.1,4.9,1.5,0.0,2,0.0,0.022,0.0826,0.03,0.0,2.98,0.05,0.05,0.9,weak_fit,1.0,0,0.111,203,,,

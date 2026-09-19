@@ -8,6 +8,7 @@ resemblance to a real person or employer is coincidental.
 - `job-description.md` - one fictional Senior Platform Engineer posting.
 - `resumes/` - 13 fictional resumes in .md, .docx and .pdf form.
 - `labels.csv` - how each resume was written, so a run can be scored.
+- `example-output/` - a complete run on this set (xlsx, csv, json) with agent-written review notes merged in, so you can see the result before running anything.
 
 ## How the resumes were constructed
 

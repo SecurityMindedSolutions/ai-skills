@@ -121,6 +121,62 @@ Sheets: Results, Summary (counts, Jev model and token cost, run time, label
 metrics if given), the job description, and a Read me with the disclaimer and a
 column guide. Rows are color-coded by verdict and the review flag is bold red.
 
+### Example output
+
+[`mock-data/example-output/`](mock-data/example-output/) holds a complete run
+on the mock set: `results.xlsx`, `results.csv`, `results.json`, and
+`agent-notes.json` (the review notes the agent wrote, exactly as merged). The
+Results sheet, abridged to the columns a reviewer scans first:
+
+| Review | File | Mirror | Verdict | Fit | Overall read | Evidence (first bullet) |
+|---|---|---|---|---|---|---|
+| **YES** | `linh_nguyen.md` | 70.0 | high | 69.1 | generated_from_posting | 7 JD sentences appear verbatim, e.g. "- Build and maintain CI/CD pipel... |
+| **YES** | `soojin_kim.md` | 69.3 | high | 64.6 | generated_from_posting | 1 JD sentence appears verbatim, e.g. "- Expert-level Terraform skills... |
+| **YES** | `petr_ivanov.md` | 68.6 | high | 71.5 | generated_from_posting | 2 JD sentences appear verbatim, e.g. "- Strong understanding of observ... |
+| **YES** | `jordan_harris.md` | 53.2 | moderate | 64.7 | generated_from_posting | Longest shared word run is 8 words: "soc 2 type ii and pci dss complia... |
+| **YES** | `arjun_singh.md` | 49.4 | moderate | 66.5 | generated_from_posting | Longest shared word run is 12 words: "secrets and identity using hashi... |
+| no | `tyler_brooks.md` | 25.2 | low | 44.5 | tailored_wording |  |
+| **YES** | `marcus_chen.docx` | 15.5 | low | 53.6 | genuine_fit | 8 of 9 JD acronyms present (89%) |
+| no | `dana_whitfield.md` | 14.6 | low | 52.3 | genuine_fit |  |
+| no | `hanna_mueller.md` | 13.6 | low | 13.3 | weak_fit |  |
+| no | `ngozi_okafor.md` | 11.1 | low | 25.5 | genuine_fit |  |
+| no | `riya_patel.pdf` | 8.4 | low | 16.4 | weak_fit |  |
+| no | `andre_williams.md` | 6.5 | low | 4.4 | weak_fit |  |
+| no | `sofia_garcia.md` | 3.2 | low | 4.1 | weak_fit |  |
+
+Two rows in full, because they show what the flag means. The polished
+generated resume, where invented metrics got past the specifics judge and the
+notes carry the case:
+
+```
+arjun_singh.md   mirror 49.4   verdict moderate   fit 66.5   read generated_from_posting
+Evidence (code):
+- Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam with least-privilege access"
+- 8 of 9 JD acronyms present (89%)
+- 15% of JD 4-word phrases reused verbatim
+LLM notes:
+- Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
+- Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
+- Phone screen: pick two of the percentages and ask how they were measured
+```
+
+And the genuinely strong human match, flagged on acronym coverage alone, where
+the row itself tells the reviewer to move on:
+
+```
+marcus_chen.docx   mirror 15.5   verdict low   fit 53.6   read genuine_fit
+Evidence (code):
+- 8 of 9 JD acronyms present (89%)
+LLM notes:
+- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
+- Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
+- Nothing here suggests the wording came from the posting
+```
+
+The remaining columns hold every individual statistic and Jev answer (0-3
+scores, probabilities, the overall-read choice and its confidence), so anyone
+who disagrees with the weighting can re-derive their own score from the sheet.
+
 ### Usage
 
 ```bash

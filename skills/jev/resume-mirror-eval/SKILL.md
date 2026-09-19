@@ -213,8 +213,8 @@ its confidence) are in their own columns for anyone who wants to re-weight.
 
 ## Mock data
 
-`mock-data/` holds a fictional job description and 13 fictional resumes with
-`labels.csv`, for demonstrating the skill without touching a real person's
+`mock-data/` holds a fictional job description, 13 fictional resumes with
+`labels.csv`, and `example-output/` with a finished run to show the user, for demonstrating the skill without touching a real person's
 resume. Two of the human-written ones are deliberately very close matches to
 the posting. To demo or regression-test:
 

@@ -36,17 +36,22 @@ metadata:
 
 ## What it does
 
-1. **Gate.** `scripts/gate.py` exposes `check_prompt(user_input, app)`. One
-   request to Jev carrying a one-paragraph description of the app and the
-   prompt, with eight typed questions answered together: instruction override,
-   persona hijack, secret or prompt extraction, action misuse beyond the app's
+1. **Gate.** `scripts/gate.py` exposes `check_prompt(user_input, app,
+   recent_turns=None)`. First, deterministic code checks
+   (`code_signals.py`) for invisible Unicode, chat-template tokens, hidden
+   HTML, homoglyph words, gibberish suffixes and fake turn markers; each
+   forces a minimum decision. Then one request to Jev carrying a paragraph
+   describing the app, the prompt, and the recent user turns if given, with
+   ten typed questions answered together: instruction override, persona
+   hijack, secret or prompt extraction, action misuse beyond the app's
    purpose, false authority, obfuscation, instructions embedded in pasted
-   content, and an overall manipulation severity, plus a labelled attack type.
-   Code weights the answers into a 0-100 risk score and applies the rules in
-   `questions.py`: block on high risk, on high severity with confidence, or on
-   any single near-certain signal; review on moderate risk, any strong signal,
-   or an unsure allow; else allow. About 1,600 tokens, 7 cents per thousand
-   prompts, 300 ms median.
+   content, format injection (fake system or assistant turns), multi-turn
+   assembly, and an overall manipulation severity, plus a labelled attack
+   type. Code weights the answers into a 0-100 risk score and applies the
+   rules in `questions.py`: block on high risk, on high severity with
+   confidence, or on any single near-certain signal; review on moderate risk,
+   any strong signal, or an unsure allow; else allow. About 2,100 tokens, 9
+   cents per thousand prompts, 300 ms median.
 2. **Evaluate.** `scripts/evaluate.py` runs a CSV of prompts through the gate,
    a built-in regex phrase list, and optionally an LLM judge via any
    OpenAI-compatible endpoint. With `label` (benign|injection) in the CSV it
@@ -81,7 +86,8 @@ Three shapes of request:
 ### 2. Stage the prompts
 
 The evaluator reads one CSV with a `prompt` column and optional `label`,
-`category`, `id`. Wherever the prompts live (local files, a log export, a
+`category`, `id`, and `history` (earlier user turns, oldest first, separated
+by ` || `, for split-across-turns cases). Wherever the prompts live (local files, a log export, a
 database query, an LLM gateway's request log, a ticketing system via a
 connector, pasted text), fetch them and write that CSV into a temp staging
 folder (your scratchpad, or `$TMPDIR/prompt-injection-eval/<timestamp>/`),
@@ -130,13 +136,15 @@ table. Read `results.json` for anything the table does not show.
 
 ### 5. Wire it in (only when asked, and only after step 4)
 
-`gate.py` is written to be copied. `check_prompt(user_input, app)` returns:
+`gate.py` is written to be copied. `check_prompt(user_input, app,
+recent_turns=None)` returns:
 
 ```json
 {"decision": "block", "risk": 69.4, "attack_type": "prompt_leak",
  "signals": ["instruction_override", "secret_extraction"],
+ "code_signals": {"invisible_unicode": "2 invisible or direction-control characters"},
  "detail": {...every probability and confidence...},
- "model": "jev-1.13.0", "input_tokens": 1610, "latency_ms": 318}
+ "model": "jev-1.13.0", "input_tokens": 2100, "latency_ms": 318}
 ```
 
 Adapt it to the user's stack (it is plain `urllib`, no SDK). Insist on:
@@ -153,6 +161,10 @@ Adapt it to the user's stack (it is plain `urllib`, no SDK). Insist on:
   threshold tuning possible later.
 - **Keep the `app` text accurate.** When the assistant gains a tool, update
   the paragraph, or "action outside its purpose" will drift.
+- **Pass recent turns** when the app has them; payload splitting is invisible
+  one message at a time.
+- **Gate fetched content too.** Retrieved documents, tool output and web
+  pages are where most in-the-wild injections live.
 
 ### 6. Report back
 
@@ -174,6 +186,7 @@ Adapt it to the user's stack (it is plain `urllib`, no SDK). Insist on:
 | Risk score (Jev) | 0-100 weighted composite of Jev's answers. Ranks prompts; the rules decide. |
 | Attack type (Jev) | Jev's pick from a fixed list, `none` for ordinary requests. Descriptive only. |
 | Signals (Jev) | Yes/no questions at or above the signal threshold, strongest first. |
+| Code signals | Deterministic checks that fired before Jev, with what they saw. Each forces a minimum decision. |
 | Regex baseline (code) | What a phrase list would have done. Comparison only. |
 | LLM judge | What a generative model replied, if `--llm-judge` was used. Comparison only. |
 
@@ -183,11 +196,13 @@ The Comparison sheet has the metrics table.
 ## Mock data
 
 `mock-data/` holds `app-context.md` for a fictional payments-support
-assistant, `prompts.csv` with 80 labelled prompts (40 attacks across nine
-categories including obfuscated, non-English and indirect-via-pasted-content;
-40 benign including hard negatives that talk about prompt injection, use
-"ignore" legitimately, role-play within purpose, or paste harmless content),
-and `example-output/` with a finished run. To demo or regression-test:
+assistant, `prompts.csv` with 117 labelled prompts (62 attacks across
+eighteen categories including obfuscated, invisible-Unicode, homoglyph,
+fake-completion, multi-turn, fiction-framed, markdown-exfiltration and
+hidden-HTML; 55 benign including hard negatives that talk about prompt
+injection, use "ignore" legitimately, role-play within purpose, paste
+harmless content or JSON, and make ordinary follow-ups across turns), and
+`example-output/` with a finished run. To demo or regression-test:
 
 ```bash
 cd "$SKILL_DIR/mock-data"
@@ -215,9 +230,12 @@ every request. TypeSafe does document that adversarial text can move Jev's
 answers, which is why the decision uses several narrow questions and a
 confidence gate rather than one yes/no, and why alert mode comes first.
 
-**Limits.** 32k-token state budget; prompts are capped at 20,000 characters.
-English-first. A very long pasted document dilutes the signal; consider
-judging the pasted part separately.
+**Limits.** 32k-token state budget; prompts are capped at 20,000 characters
+and recent turns at six. English-first. Text only: instructions inside images
+are invisible to this gate. A very long pasted document dilutes the signal;
+consider judging the pasted part separately. Coverage against documented
+techniques is tabulated in README.md; the gaps are multimodal input and
+model-specific token exploits.
 
 **Data handling.** Prompts go to `api.typesafe.ai` and, only if
 `--llm-judge` is used, to that endpoint. Outputs default to

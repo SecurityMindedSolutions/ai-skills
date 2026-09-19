@@ -9,7 +9,8 @@ from pathlib import Path
 
 DISCLAIMER = (
     "RESEARCH PROOF OF CONCEPT. The risk score is TypeSafe Jev's answer to a fixed set "
-    "of questions about one prompt, weighted in code. It is a signal for a security "
+    "of questions about one prompt, weighted in code, with deterministic code checks for "
+    "things no model should be asked to notice. It is a signal for a security "
     "gate, not a guarantee: no detector catches every injection, and this one should "
     "sit alongside least-privilege tools, output checks and logging, not replace them. "
     "Evaluate it on a labelled sample of your own traffic, tune the thresholds, and run "
@@ -22,6 +23,7 @@ SIMPLE_COLUMNS = [
     ("Risk score (Jev)", "risk", 14),
     ("Attack type (Jev)", "attack_type", 18),
     ("Signals (Jev)", "signals_text", 40),
+    ("Code signals", "code_signals_text", 36),
     ("Prompt", "prompt", 90),
     ("Regex baseline (code)", "regex_decision", 18),
     ("LLM judge", "llm_verdict", 12),
@@ -29,7 +31,8 @@ SIMPLE_COLUMNS = [
     ("Category", "category", 18),
 ]
 
-DETAIL_COLUMNS = SIMPLE_COLUMNS[:5] + [
+DETAIL_COLUMNS = SIMPLE_COLUMNS[:6] + [
+    ("Earlier turns", "history", 40),
     ("Severity (0-3)", "manipulation_severity_raw", 12),
     ("Severity confidence", "manipulation_severity_confidence", 16),
     ("Override P", "instruction_override", 10),
@@ -39,6 +42,8 @@ DETAIL_COLUMNS = SIMPLE_COLUMNS[:5] + [
     ("False authority P", "false_authority", 15),
     ("Obfuscation P", "obfuscation", 13),
     ("Embedded instr. P", "embedded_instructions", 15),
+    ("Format injection P", "format_injection", 15),
+    ("Multi-turn P", "multi_turn_assembly", 12),
     ("Attack type confidence", "attack_type_confidence", 18),
     ("Jev latency ms", "latency_ms", 13),
     ("Jev input tokens", "input_tokens", 14),
@@ -108,7 +113,7 @@ def _results_sheet(sheet, title: str, rows: list[dict], columns: list[tuple], bo
     for r, row in enumerate(rows, start=2):
         for col, (_, key, _) in enumerate(columns, start=1):
             cell = sheet.cell(row=r, column=col, value=row.get(key, ""))
-            if key in ("prompt", "signals_text", "regex_hits_text"):
+            if key in ("prompt", "signals_text", "regex_hits_text", "code_signals_text", "history"):
                 cell.alignment = Alignment(wrap_text=True, vertical="top")
         fill = DECISION_FILL.get(row.get("decision", ""))
         if fill:
@@ -167,6 +172,7 @@ def _column_guide() -> str:
         "Risk score (Jev): 0-100, Jev's answers to eight fixed questions, weighted in code.",
         "Attack type (Jev): Jev's pick from a fixed list, with 'none' for ordinary requests. Descriptive; the decision comes from the score.",
         "Signals (Jev): which yes/no questions came back at or above the signal threshold, strongest first.",
+        "Code signals: deterministic checks that ran before Jev (invisible Unicode, chat-template tokens, hidden HTML, mixed-script words, gibberish suffix, fake turn markers). Each forces a minimum decision; see questions.py.",
         "Regex baseline (code): what a phrase list would have done with the same prompt. Here for comparison only.",
         "LLM judge: what a generative model asked 'is this an injection?' replied, if that baseline was run. Here for comparison only.",
         "Label / Category: ground truth from the input file when provided; used for the Comparison sheet.",

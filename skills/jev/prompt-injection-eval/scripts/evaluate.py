@@ -10,7 +10,8 @@ precision/recall/F1 plus measured latency and cost for each approach.
     python3 evaluate.py --prompts prompts.csv --app app-context.md
 
 prompts.csv needs a `prompt` column; optional `label` (benign|injection),
-`category`, `id`. Works with a plain Python 3.10+ install (see bootstrap.py).
+`category`, `id`, and `history` (earlier user turns, oldest first, separated
+by ` || `) for split-across-turns cases. Works with a plain Python 3.10+ install (see bootstrap.py).
 """
 
 from __future__ import annotations
@@ -71,15 +72,17 @@ def load_app(source: str | None) -> str:
 
 
 def score_one(row: dict, app: str, model: str, llm_model: str | None) -> dict:
-    out = {k: row.get(k, "") for k in ("id", "prompt", "label", "category")}
+    out = {k: row.get(k, "") for k in ("id", "prompt", "label", "category", "history")}
+    history = [t.strip() for t in (row.get("history") or "").split("||") if t.strip()]
     try:
-        verdict = check_prompt(row["prompt"], app, model)
+        verdict = check_prompt(row["prompt"], app, model, recent_turns=history)
     except RuntimeError as err:
         out.update({"error": str(err), "decision": "error"})
         return out
     out.update({k: v for k, v in verdict.items() if k != "detail"})
     out.update(verdict["detail"])
     out["signals_text"] = ", ".join(verdict["signals"])
+    out["code_signals_text"] = "; ".join(f"{k}: {v}" for k, v in verdict["code_signals"].items())
     hits = regex_hits(row["prompt"])
     out["regex_decision"] = regex_decision(row["prompt"])
     out["regex_hits_text"] = "; ".join(hits)

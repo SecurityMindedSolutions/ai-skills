@@ -24,7 +24,7 @@ on wording and specificity while still reporting their fit as high.
 ## Scoring a run
 
 ```bash
-uv run ../scripts/analyze.py --jd job-description.md --resumes resumes --labels labels.csv
+python3 ../scripts/analyze.py --jd job-description.md --resumes resumes --labels labels.csv
 ```
 
 The summary line reports mean score per label, precision and recall of the

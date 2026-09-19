@@ -35,7 +35,197 @@ resemblance to a real person or employer is coincidental.
 
 ---
 
-- How the skill works, how an agent runs it, and every flag: [`SKILL.md`](SKILL.md)
-- Usage, output format, cost and time, and results on the mock set: [`../README.md`](../README.md)
-- Why each signal exists and what fools it: [`references/methodology.md`](references/methodology.md)
-- Every question, weight and threshold: [`scripts/questions.py`](scripts/questions.py)
+## What it does
+
+Point it at one job description and a set of resumes. It scores every resume
+for how closely its wording mirrors the posting, flags the ones a human should
+read before anyone ranks them, and writes a spreadsheet you can sort.
+
+The question it answers is narrow on purpose. A platform engineer who has run
+EKS, Terraform and ArgoCD for six years will mention EKS, Terraform and ArgoCD,
+and so will a resume a chatbot produced from the posting. Keyword scans cannot
+tell those apart. What separates them is *how* the words appear: verbatim
+phrases and whole sentences lifted from the posting, requirements restated as
+experience in the posting's order, generic text with no employers, dates,
+systems or numbers behind it, and posting register ("you will", "the ideal
+candidate") leaking into a document supposedly written by the applicant.
+
+### How it works
+
+Two layers, combined half and half into a 0-100 **mirror score**:
+
+- **Statistics in code.** Share of the posting's four-word phrases reused
+  verbatim, the longest shared run of words, whether matched terms appear in the
+  posting's order, TF-IDF cosine within the batch, keyword and acronym coverage,
+  and a z-score against the rest of the batch. Deterministic and reproducible
+  without any model.
+- **Judgments from TypeSafe's Jev.** One request per resume carrying the posting
+  and the resume as state, and seven typed questions answered in parallel:
+  phrasing mirror (0-3), requirement echo (0-3), concrete specifics (0-3),
+  generic template (probability), posting-language leak (probability), career
+  consistency (probability), and a four-way overall read with its confidence.
+  Jev is a decision model, not a text generator: it returns calibrated numbers
+  in under a second, at roughly a tenth of a cent per resume.
+
+Fit is reported in its own column so "strong fit, own words" and "strong fit,
+copied words" look different on the sheet. Every question, weight and threshold
+lives in one file, `scripts/questions.py`, so the part a reviewer should read is
+in one place.
+
+### Needs human review
+
+The first column. TRUE when *any* signal fired: a moderate or high score, a
+batch outlier, an evidence bullet, a Jev flag, or the review notes' own `review:
+yes`. It is generous on purpose and it is a prompt to read, not a judgment. In
+the mock batch it flags a genuinely strong human match on acronym coverage
+alone; the reviewer opens the row, sees a low mirror score, a `genuine_fit`
+read and a note saying the wording is the candidate's own, and moves on.
+
+### Evidence and notes
+
+Each flagged row carries plain-language **evidence bullets computed in code**
+that a reviewer can check against the two documents:
+
+```
+- 7 JD sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in GitHub Actions and ArgoCD, enabling safe, frequent..."
+- Longest shared word run is 80 words: "infrastructure as code using terraform and terragrunt with reusable modules ..."
+- 9 of 9 JD acronyms present (100%), all of them
+- 36% of JD 4-word phrases reused verbatim
+- Few concrete specifics: employers, dates, numbers or named systems are thin
+```
+
+Optionally, **review notes**: two to four terse bullets per flagged resume,
+no summary sentence, ending in `review: yes` or `review: no`. By default the
+agent running the skill writes them itself from `notes-request.json`, so no
+second API key is needed and the skill works the same in Claude Code, Codex,
+Cursor or any other agent. For unattended runs, `--llm-notes anthropic` or
+`--llm-notes openai --llm-model <id>` (any OpenAI-compatible endpoint) does it
+by API.
+
+### Inputs and where they come from
+
+The script reads local files (.pdf, .docx, .txt, .md). The agent does the
+fetching: local or synced folders are passed straight through; files behind a
+connector, an ATS MCP server, a URL or an email are staged into a temp folder
+first. When the source is an ATS, a `manifest.csv` carries the application id,
+candidate and source link into the spreadsheet next to each file. Staged copies
+and outputs live under the system temp directory, never beside the user's
+files, and the agent offers to delete the staged resumes when the run is done.
+The only network calls are to `api.typesafe.ai` and, if opted in, the notes
+provider.
+
+### Output
+
+`results.xlsx` sorted by mirror score, plus `results.csv` and `results.json`.
+Sheets: Results, Summary (counts, Jev model and token cost, run time, label
+metrics if given), the job description, and a Read me with the disclaimer and a
+column guide. Rows are color-coded by verdict and the review flag is bold red.
+
+### Usage
+
+```bash
+python3 scripts/analyze.py --jd posting.md --resumes ./resumes --llm-notes agent
+```
+
+| Flag | Purpose |
+|---|---|
+| `--jd` | Job description: file, folder holding one file, or `-` for stdin |
+| `--resumes` | One or more files and folders |
+| `--out` | Output folder (default: a timestamped folder under the system temp dir) |
+| `--llm-notes agent\|anthropic\|openai` | Add review notes; `agent` writes a request file for the host agent |
+| `--merge-notes notes.json` | Fold agent-written notes back into an existing `--out` |
+| `--manifest manifest.csv` | Carry ids (`file` plus any columns) into the sheet |
+| `--labels labels.csv` | Score the run against `human` / `ai_tailored` labels |
+| `--llm-top N`, `--workers N`, `--model`, `--no-color` | The usual |
+
+Requirements: Python 3.10 or newer and a TypeSafe API key in `TYPESAFE_API_KEY`
+or `~/.config/typesafe/env`. Nothing to install: on first run the script
+creates a private virtual environment under the system temp directory with the
+`venv` and `pip` that ship with Python, puts its two pure-Python dependencies
+(pypdf, openpyxl) there, and re-runs itself from it; later runs reuse it. `.docx`
+is parsed with the standard library. If that bootstrap cannot happen (no pip,
+no network) the script continues with reduced output: CSV instead of xlsx, and
+PDF only via `pdftotext` if it is present. Anyone who has [uv](https://docs.astral.sh/uv/)
+can use `uv run scripts/analyze.py ...` instead and skip the bootstrap.
+
+### Mock data and results
+
+`mock-data/` holds a fictional posting and 13 fictional resumes with labels: 8
+written as a person would (two very close matches to the posting, one with a
+keyword-padded skills section, two off-target) and 5 written the way a
+generator produces them from a posting, in different styles. On that set the
+generated resumes score 49-70 and the human ones 3-25; the two close human
+matches land at 15-16 with a fit signal of 52. The polished generated resume
+with invented round-number metrics fools the specifics judge and lands in
+"moderate", which is the right answer: it needs a human, and the notes say why.
+Separable mock data proves the mechanics, not the method; real, labelled data
+is the next step and `--labels` reports the numbers when it arrives.
+
+### Cost and time
+
+**The Jev pass.** Measured on the mock set (one-page resumes, about 2,200 Jev
+input tokens each including the posting) at Jev's list price of $0.042 per
+million input tokens, output free. Wall time includes text extraction, the
+statistics and writing the spreadsheet, all of which is a rounding error next
+to the network calls. Runs at 25 and 50 resumes were timed directly; 100 and
+500 are extrapolated, which is safe because every resume is one independent
+request and the batch stays far below Jev's rate limits (1,200 requests and
+250,000 tokens per second). **This table does not include review notes.**
+
+| Resumes | Jev tokens | Jev cost | Wall time, 1 worker | Wall time, 4 workers (default) |
+|---|---|---|---|---|
+| 25 | 56k | $0.002 | 8 s | 3 s |
+| 100 | 220k | $0.009 | 35 s | 10 s |
+| 500 | 1.1M | $0.05 | 3 min | 45 s |
+
+Two-page resumes roughly double the tokens and the cost; time is dominated by
+request latency, not size, so it barely moves. Re-running a batch after a
+threshold change costs the same again.
+
+**The notes pass, if you turn it on.** Only flagged rows get notes (about 40%
+of the mock set, which is higher than a real batch should be since five of its
+thirteen resumes were written to be caught). Per note the model reads the
+posting, the resume, the scores and the code evidence (about 1,700 input
+tokens) and writes four bullets plus a review line (about 150 output tokens).
+API notes run through the same worker pool as the Jev calls, four at a time by
+default. These figures are estimates from list prices and typical response
+times, not measurements:
+
+| Notes provider | Per note | 40 notes (100 resumes, 40% flagged) |
+|---|---|---|
+| The agent running the skill (`--llm-notes agent`) | Your agent's plan; a few seconds of reading and writing per resume | No separate bill; several minutes of agent time |
+| Claude Opus 5 by API | about $0.012, 5 to 10 s | about $0.50; 1 to 2 min at 4 workers |
+| Claude Sonnet 5 by API | about $0.005, 3 to 6 s | about $0.20; under a minute at 4 workers |
+| Any OpenAI-compatible model | that model's rate on ~1,700 in / ~150 out | varies |
+
+**End to end, 100 resumes, 40 flagged:**
+
+| Configuration | Time | Cost |
+|---|---|---|
+| Scores and evidence only | about 10 s | about $0.01 |
+| Plus notes from the agent running the skill | 10 s plus the agent's reading time, typically a few minutes | about $0.01 plus your agent plan |
+| Plus notes from Claude Opus 5 by API | 1 to 2 min | about $0.50 |
+| Plus notes from Claude Sonnet 5 by API | under a minute | about $0.20 |
+
+The shape is what matters: the statistical pass on a hundred applicants costs
+about a cent and finishes before you have switched windows; the notes on the
+forty that need a look are the only real cost, and even with a frontier model
+they come in under a dollar.
+
+### Customization
+
+- Weights, thresholds and every Jev question: [`scripts/questions.py`](scripts/questions.py).
+- Evidence bullet rules: [`scripts/evidence.py`](scripts/evidence.py).
+- Notes prompt and providers: [`scripts/llm_notes.py`](scripts/llm_notes.py).
+- Why each signal exists and what fools it: [`references/methodology.md`](references/methodology.md).
+- How an agent runs it, step by step: [`SKILL.md`](SKILL.md).
+
+### Install for other agents
+
+```bash
+npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
+```
+
+All paths in the skill are relative to its own folder, so it runs from
+`.agents/skills/`, `~/.codex/skills/`, `~/.cursor/skills/` or `~/.claude/skills/`
+alike.

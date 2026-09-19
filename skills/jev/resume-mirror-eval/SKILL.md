@@ -107,9 +107,14 @@ if the user opts into API notes). Say so if asked.
 ### 2. Check prerequisites
 
 ```bash
-uv --version || echo "install uv: https://docs.astral.sh/uv/getting-started/installation/"
+python3 --version   # 3.10 or newer; `python` on Windows
 test -n "$TYPESAFE_API_KEY" || test -f ~/.config/typesafe/env || echo "need a TypeSafe key"
 ```
+
+Nothing else. On first run the script creates a private virtual environment
+under the system temp directory and installs its two pure-Python dependencies
+there (a few seconds); later runs reuse it. If the user has `uv`, `uv run`
+works too and skips that step.
 
 The script reads `TYPESAFE_API_KEY` from the environment, or from a line
 `TYPESAFE_API_KEY=...` in `~/.config/typesafe/env`. Keys come from
@@ -119,7 +124,7 @@ not guess or put a key on the command line.
 ### 3. Run the analysis
 
 ```bash
-uv run "$SKILL_DIR/scripts/analyze.py" \
+python3 "$SKILL_DIR/scripts/analyze.py" \
   --jd "$STAGING/jd.md" \
   --resumes "$STAGING/resumes" \
   --out "$STAGING/out" \
@@ -164,15 +169,15 @@ depending on whether a human should read it before ranking. Save the notes as
 a JSON object mapping file name to note text, then merge:
 
 ```bash
-uv run "$SKILL_DIR/scripts/analyze.py" --out "$STAGING/out" --merge-notes "$STAGING/notes.json"
+python3 "$SKILL_DIR/scripts/analyze.py" --out "$STAGING/out" --merge-notes "$STAGING/notes.json"
 ```
 
 The merge rewrites the spreadsheet with the notes and folds `review: yes` into
 the Needs human review column.
 
 If the user prefers an API model for notes (for unattended runs), use
-`--llm-notes anthropic` (`ANTHROPIC_API_KEY`, add `--with anthropic` to the
-`uv run` command) or `--llm-notes openai --llm-model <id>` (`OPENAI_API_KEY`,
+`--llm-notes anthropic` (`ANTHROPIC_API_KEY`; the Anthropic SDK is installed
+into the private venv on first use) or `--llm-notes openai --llm-model <id>` (`OPENAI_API_KEY`,
 optional `OPENAI_BASE_URL` for OpenRouter, Ollama or any compatible endpoint).
 
 ### 5. Report back
@@ -215,25 +220,29 @@ the posting. To demo or regression-test:
 
 ```bash
 cd "$SKILL_DIR/mock-data"
-uv run ../scripts/analyze.py --jd job-description.md --resumes resumes --labels labels.csv --llm-notes agent
+python3 ../scripts/analyze.py --jd job-description.md --resumes resumes --labels labels.csv --llm-notes agent
 ```
 
 ## Technical details
 
-**Dependencies.** The entry point declares its two third-party dependencies
-inline (PEP 723): `pypdf` for PDF text and `openpyxl` for the .xlsx. `uv run`
-resolves them into its own cache on first use, and fetches a Python interpreter
-too if the machine lacks one, so the user installs nothing by hand beyond uv
-itself (one command on macOS, Linux or Windows). `.docx` is parsed with the
-standard library (a .docx is a zip holding `word/document.xml`), so there is no
-Word dependency. The TypeSafe call is plain `urllib`; no SDK.
+**Dependencies.** A plain Python 3.10+ install is the only requirement. The
+script needs two pure-Python packages, `pypdf` (PDF text) and `openpyxl` (the
+.xlsx). On first run `scripts/bootstrap.py` creates a private virtual
+environment at `<system temp>/resume-mirror-eval/venv` with the `venv` and
+`pip` modules that ship with Python, installs the two packages there, and
+re-executes the script from it; nothing is installed globally and the user
+runs no install command. `.docx` is parsed with the standard library (a .docx
+is a zip holding `word/document.xml`). The TypeSafe call is plain `urllib`.
+The entry point also carries PEP 723 inline metadata, so `uv run` works for
+anyone who has uv and skips the bootstrap.
 
-**Fallbacks without uv.** The script also runs under a bare `python3`: `.md`,
-`.txt` and `.docx` always work; `.pdf` falls back to the `pdftotext` command if
-present, otherwise that file gets an error row and the batch continues; without
-`openpyxl` it writes `results.csv` and `results.json` and says so. The Anthropic
-SDK is imported only when `--llm-notes anthropic` is used and returns a clear
-per-row message if it is missing.
+**Fallbacks.** If the venv cannot be created or pip cannot reach the network,
+the script says so and continues: `.md`, `.txt` and `.docx` always work; `.pdf`
+falls back to the `pdftotext` command if present, otherwise that file gets an
+error row and the batch continues; without `openpyxl` it writes `results.csv`
+and `results.json` and says so. The Anthropic SDK is imported only when
+`--llm-notes anthropic` is used and produces a clear per-row message if it is
+missing.
 
 **API key resolution.** `TYPESAFE_API_KEY` in the environment, else
 `~/.config/typesafe/env`. Nothing else is read and the key is never written to

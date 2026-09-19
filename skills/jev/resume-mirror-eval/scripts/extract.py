@@ -4,7 +4,7 @@ Supports .pdf, .docx, .txt and .md. Anything else is skipped with a warning
 so a stray .DS_Store or image in a shared folder does not abort the run.
 
 Dependencies are kept to a minimum on purpose: .docx is parsed with the
-standard library, and .pdf uses pypdf when available (uv installs it) or the
+standard library, and .pdf uses pypdf when available (bootstrap.py installs it) or the
 `pdftotext` command as a fallback.
 """
 
@@ -45,7 +45,7 @@ def _read_pdf(path: Path) -> str:
 def _read_pdf_cli(path: Path) -> str:
     """Fallback when pypdf is not installed: poppler's pdftotext if present."""
     if not shutil.which("pdftotext"):
-        raise ValueError("PDF support needs pypdf (run via `uv run`) or the pdftotext command")
+        raise ValueError("PDF support needs pypdf (see bootstrap note above) or the pdftotext command")
     result = subprocess.run(["pdftotext", "-layout", str(path), "-"],
                             capture_output=True, text=True, check=True)
     return result.stdout

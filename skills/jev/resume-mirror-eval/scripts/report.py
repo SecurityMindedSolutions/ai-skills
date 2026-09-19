@@ -74,7 +74,7 @@ def write_all(out_dir: Path, rows: list[dict], summary: dict, jd_text: str,
     try:
         import openpyxl  # noqa: F401 - probe only
     except ImportError:
-        print("note: openpyxl not installed, skipping results.xlsx (run via `uv run` to get it)",
+        print("note: openpyxl not installed, skipping results.xlsx (see bootstrap note above)",
               file=sys.stderr)
         return paths
     paths["xlsx"] = out_dir / "results.xlsx"

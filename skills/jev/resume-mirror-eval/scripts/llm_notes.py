@@ -61,7 +61,9 @@ def anthropic_note(prompt: str, model: str | None) -> str:
     try:
         import anthropic
     except ImportError:
-        return "[llm error: anthropic SDK not installed; run with `uv run --with anthropic ...`]"
+        if not _pip_install("anthropic"):
+            return "[llm error: anthropic SDK not installed and pip install failed]"
+        import anthropic
     client = anthropic.Anthropic()
     try:
         response = client.messages.create(
@@ -100,6 +102,16 @@ def openai_note(prompt: str, model: str | None) -> str:
         return data["choices"][0]["message"]["content"].strip()
     except Exception as err:  # noqa: BLE001 - surfaced in the sheet, not fatal
         return f"[llm error: {err}]"
+
+
+def _pip_install(package: str) -> bool:
+    """Install into whatever Python is running us (the private venv, normally)."""
+    import subprocess
+    import sys
+
+    result = subprocess.run([sys.executable, "-m", "pip", "install", "--quiet",
+                             "--disable-pip-version-check", package], capture_output=True)
+    return result.returncode == 0
 
 
 PROVIDERS = {"anthropic": anthropic_note, "openai": openai_note}

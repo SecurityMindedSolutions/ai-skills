@@ -1,11 +1,15 @@
-#!/usr/bin/env -S uv run --quiet --script
+#!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10"
 # dependencies = ["pypdf>=4", "openpyxl>=3.1"]
 # ///
 """Score a batch of resumes for how closely their wording mirrors a job description.
 
-    uv run analyze.py --jd posting.md --resumes ./resumes --out ./out
+    python3 analyze.py --jd posting.md --resumes ./resumes
+
+Works with a plain Python 3.10+ install: on first run it creates a private venv
+under the system temp dir for its two pure-Python dependencies (see
+bootstrap.py). `uv run analyze.py` works too and skips that step.
 
 Statistics are computed in code; semantic judgments come from TypeSafe's Jev
 model; optional free-text notes come from a generative model or the host agent.
@@ -23,14 +27,18 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
-import questions as q
-from evidence import evidence_bullets
-from extract import collect_resumes, load_job_description, read_document
-from jev import JevClient, load_api_key
-from lexical import TfidfPool, lexical_metrics, tokenize, zscores
-from llm_notes import PROVIDERS, merge_notes, note_prompt, split_flag, write_agent_request
-from report import DISCLAIMER, write_all
-from scoring import fit_signal, mirror_score, review_reasons, semantic_signals, verdict
+from bootstrap import ensure_dependencies
+
+ensure_dependencies(sys.argv)
+
+import questions as q  # noqa: E402
+from evidence import evidence_bullets  # noqa: E402
+from extract import collect_resumes, load_job_description, read_document  # noqa: E402
+from jev import JevClient, load_api_key  # noqa: E402
+from lexical import TfidfPool, lexical_metrics, tokenize, zscores  # noqa: E402
+from llm_notes import PROVIDERS, merge_notes, note_prompt, split_flag, write_agent_request  # noqa: E402
+from report import DISCLAIMER, write_all  # noqa: E402
+from scoring import fit_signal, mirror_score, review_reasons, semantic_signals, verdict  # noqa: E402
 
 # Outputs and any staged copies of resumes go under the system temp dir by
 # default, never next to the user's files. Callers copy out what they keep.
@@ -119,9 +127,13 @@ def add_llm_notes(args, out_dir: Path, jd_text: str, texts: dict[str, str], rows
         path = write_agent_request(out_dir, jd_text, texts, targets)
         return f"agent notes request for {len(targets)} resumes written to {path.name}"
     provider = PROVIDERS[args.llm_notes]
-    for row in targets:
+
+    def annotate(row: dict) -> None:
         raw = provider(note_prompt(jd_text, texts[row["file"]], row), args.llm_model)
         row["llm_notes"], row["llm_flag"] = split_flag(raw)
+
+    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+        list(executor.map(annotate, targets))
     return f"{len(targets)} notes from {args.llm_notes}"
 
 

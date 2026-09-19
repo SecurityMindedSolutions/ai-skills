@@ -106,8 +106,7 @@ keep it as it is.
 Start a new Claude Code session, then type the command. The category README linked
 beside each table above covers that skill's options and output. Three need outside tools:
 `/github-remediate-vulns` needs the `gh` CLI, `/built-with` needs Python 3, `curl`
-and Chrome, and `/resume-mirror-eval` needs [uv](https://docs.astral.sh/uv/) and a
-TypeSafe API key.
+and Chrome, and `/resume-mirror-eval` needs Python 3.10+ and a TypeSafe API key.
 
 The `jev/` skills carry a research-only disclaimer. Read
 [skills/jev/README.md](skills/jev/README.md) before pointing one at a real applicant.

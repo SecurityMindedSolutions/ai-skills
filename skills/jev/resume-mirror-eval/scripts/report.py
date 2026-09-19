@@ -22,8 +22,8 @@ SIMPLE_COLUMNS = [
     ("Needs human review", "needs_review", 12),
     ("File", "file", 34),
     ("Mirror score (Jev)", "mirror_score", 16),
-    ("Evidence (code)", "evidence", 80),
-    ("LLM notes", "llm_notes", 80),
+    ("Text match analysis (code)", "evidence", 80),
+    ("AI analysis (agent)", "llm_notes", 80),
 ]
 
 # Everything: the Details sheet and results-detail.csv.
@@ -47,8 +47,8 @@ COLUMNS = [
     ("Verbatim JD sentences", "verbatim_sentences", 19),
     ("Acronym cov", "acronym_coverage", 11),
     ("Words", "resume_words", 7),
-    ("Evidence (code)", "evidence", 70),
-    ("LLM notes", "llm_notes", 70),
+    ("Text match analysis (code)", "evidence", 70),
+    ("AI analysis (agent)", "llm_notes", 70),
     ("Error", "error", 40),
 ]
 
@@ -160,10 +160,11 @@ def _text_sheet(book, title: str, text: str) -> None:
 def _column_guide() -> str:
     return "\n".join([
         "Column guide",
+        "Three separate methods, one column each: Mirror score (Jev) is TypeSafe's decision model; Text match analysis (code) is exact string counting with no AI; AI analysis (agent) is the AI agent's own reading. None feeds another.",
         "Results sheet / results.csv: the five columns a reviewer needs. Details sheet / results-detail.csv: every statistic and Jev answer behind the score.",
         "Needs human review: YES when any signal fired (mirror score at or above the review threshold, batch outlier, a code evidence bullet, a Jev flag, or the notes' review flag). Blank otherwise. It means 'a person should look at this file', not anything about the candidate.",
         "Mirror score (Jev): 0-100, TypeSafe Jev's answers to six fixed questions, weighted as set in questions.py. Deterministic for the same input. Higher means the file's wording tracks the posting more closely. No high/medium/low grades on purpose.",
         "Batch z: how many standard deviations this file sits above or below the batch mean. Batch outlier: YES past the threshold in questions.py.",
-        "Evidence (code): deterministic bullets from plain text statistics (verbatim sentences, longest shared run, acronym and phrase reuse, order) that a reviewer can check against the two documents. Not scored. The raw counts are in the Details columns.",
-        "LLM notes: optional bullets from a generative model or the host agent. Anecdotal, not scored.",
+        "Text match analysis (code): sentences filled in by the script from exact counts (verbatim sentences, longest shared word run, acronym and phrase reuse, order). No AI writes or reads this column. Not scored. Raw counts are in the Details columns.",
+        "AI analysis (agent): the AI agent's own observations after reading the resume against the posting. Judgment, not counting. Not scored; only its final review yes/no feeds the review flag.",
     ])

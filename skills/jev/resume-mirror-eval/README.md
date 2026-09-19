@@ -41,8 +41,8 @@ you use. Jev is a decision model, not a text generator: you give it two
 documents and a fixed set of typed questions, and it returns numbers (a 0-3
 score, a probability) that come out the same way every time for the same
 input. The mirror score is built from those numbers alone, with the weights
-written down in one file for anyone to read. Plain code adds the evidence
-bullets, and your AI agent adds the notes; neither touches the score.
+written down in one file for anyone to read. Plain code adds the text match
+analysis, and your AI agent adds its own analysis; neither touches the score.
 
 Your AI agent (Claude Code, Codex, Cursor or similar) does the fetching, runs
 the analysis, and writes the short review notes. Jev does the judging.
@@ -57,27 +57,27 @@ The cost is small: about a cent per hundred resumes, detailed under
 
 - You give your AI agent one job description and a set of resumes.
 - It scores every resume file for how closely its *wording* tracks the posting.
-- It marks the files a person should read first and says why in plain English.
+- It marks the files a person should read first and says why, three ways: Jev's score, exact text-match counts, and your AI agent's own read.
 - You get a sorted spreadsheet. Here is the end result on the fictional set in
-`mock-data/`, trimmed to the first evidence bullet per row to fit the page (full
-files, with every bullet and the notes, in [`mock-data/example-output/`](mock-data/example-output/)):
+`mock-data/`, trimmed to the first bullet of each analysis column to fit the page
+(full files in [`mock-data/example-output/`](mock-data/example-output/)):
 
 
-| Needs human review | File | Mirror score (Jev) | Evidence |
-|---|---|---|---|
-| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a strong opinion o... |
-| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability principles, in... |
-| **YES** | `linh_nguyen.md` | 79 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in GitHub Actions... |
-| **YES** | `jordan_harris.md` | 69 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" |
-| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam wi... |
-|  | `tyler_brooks.md` | 32 |  |
-| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) |
-|  | `dana_whitfield.md` | 14 |  |
-|  | `hanna_mueller.md` | 11 |  |
-|  | `ngozi_okafor.md` | 8 |  |
-|  | `riya_patel.pdf` | 6 |  |
-|  | `andre_williams.md` | 2 |  |
-|  | `sofia_garcia.md` | 2 |  |
+| Needs human review | File | Mirror score (Jev) | Text match analysis (code) | AI analysis (agent) |
+|---|---|---|---|---|
+| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | 'Key Qualifications' is the posting's 'What we are looking for' list copied bull... |
+| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The 'Mission' section is the posting's 'About the role' paragraph rewritten in t... |
+| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | All nine 'What you will do' bullets from the posting appear as the current-role... |
+| **YES** | `jordan_harris.md` | 69 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting bullet is restated with a synonym swap ('Design, build and operate'... |
+| **YES** | `arjun_singh.md` | 47 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | Bullets follow the posting's order and wording, then append a metric to each; th... |
+|  | `tyler_brooks.md` | 34 |  |  |
+| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only for acronym coverage; wording is the candidate's own, with tools th... |
+|  | `dana_whitfield.md` | 15 |  |  |
+|  | `hanna_mueller.md` | 12 |  |  |
+|  | `ngozi_okafor.md` | 9 |  |  |
+|  | `riya_patel.pdf` | 6 |  |  |
+|  | `andre_williams.md` | 2 |  |  |
+|  | `sofia_garcia.md` | 2 |  |  |
 
 
 Why wording, not keywords: a real platform engineer's resume mentions the same
@@ -92,12 +92,13 @@ rate the candidate's qualifications or fit, on purpose.
 
 ## How it works
 
-For each resume, one request goes to TypeSafe's Jev carrying the posting and
-the resume, with six fixed questions. Jev answers all six at once, in under a
-second, for about a tenth of a cent. **The mirror score is built from those six
-answers and nothing else**, using weights written down in one file.
+Three separate methods, each with its own column. None of them feeds another.
 
-The six questions:
+**1. Mirror score (Jev).** For each resume, one request goes to TypeSafe's Jev
+carrying the posting and the resume, with six fixed questions. Jev answers all
+six at once, in under a second, for about a tenth of a cent, as numbers. The
+mirror score is built from those six answers and nothing else, using weights
+written down in one file. The questions:
 
 - How much of the wording is copied or lightly reworded from the posting (0-3)
 - How completely it claims every requirement, including the niche ones, in the posting's order (0-3)
@@ -106,8 +107,8 @@ The six questions:
 - Does it contain job-posting language like "the ideal candidate" (probability)
 - Are the claimed skills plausible for the listed roles (probability)
 
-Alongside the score, plain code (no AI of any kind) counts things a person can
-verify by eye and turns them into the **Evidence** column:
+**2. Text match analysis (code).** Plain Python string matching, no AI of any
+kind. The script counts things and fills the counts into fixed sentences:
 
 - Posting sentences that appear verbatim in the resume, with a quote
 - The longest run of consecutive words the two documents share
@@ -115,14 +116,19 @@ verify by eye and turns them into the **Evidence** column:
 - The share of the posting's four-word phrases reused word for word
 - Whether matched terms show up in the posting's order
 
-These counts do not feed the score and there is no second score built from
-them. They are there so the reviewer can check Jev's number against something
-concrete.
+That is why every row uses the same wording: "N posting sentences appear
+verbatim, e.g. ..." is a template with the number and the quote pasted in.
+These counts do not enter the mirror score. They are there so a person can
+check Jev's number against something concrete.
 
-Your AI agent writes the **Notes**: a few short observations per flagged file.
-Those are not scored either.
+**3. AI analysis (agent).** Your AI agent reads each flagged resume against the
+posting itself and writes two to four observations in its own words: things
+that cannot be counted, like "every metric is a round number" or "employers are
+unnamed", plus something to ask on a phone screen. This is the only column an
+AI writes. It is not scored; the agent's closing `review: yes` or `review: no`
+is the one thing from it that feeds the review flag.
 
-Every question, weight and threshold is in one file,
+Every Jev question, weight and threshold is in one file,
 [`scripts/questions.py`](scripts/questions.py). If you disagree with how
 something scored, that is the file to change.
 
@@ -135,37 +141,38 @@ anyone who wants to check the math or re-weight it. The same two views are
 written as `results.csv` and `results-detail.csv`, plus `results.json`.
 
 
-| Column | What it tells you |
-|---|---|
-| **Needs human review** | YES if anything looked worth a look, blank otherwise. It means "a person should read this file", nothing more. |
-| **File** | The resume file name (plus any ids your agent carried over from an ATS). |
-| **Mirror score (Jev)** (0-100) | Jev's measure of how closely the file's wording tracks the posting. Higher is closer. No grades or buckets, on purpose. |
-| **Evidence** | Plain facts you can check against the two documents: "7 posting sentences appear verbatim", "8 of 9 posting acronyms present". |
-| **Notes** | Two to four bullets from the agent on what to look at and what to ask on a phone screen. |
+| Column | Who produces it | What it tells you |
+|---|---|---|
+| **Needs human review** | The script (an OR of the other three) | YES if anything looked worth a look, blank otherwise. It means "a person should read this file", nothing more. |
+| **File** | | The resume file name (plus any ids your agent carried over from an ATS). |
+| **Mirror score (Jev)** | TypeSafe's Jev | 0-100. How closely the file's wording tracks the posting. Higher is closer. No grades or buckets, on purpose. |
+| **Text match analysis (code)** | Python string matching, no AI | Exact counts a person can verify: "7 posting sentences appear verbatim", "8 of 9 posting acronyms present". |
+| **AI analysis (agent)** | Your AI agent | Two to four bullets from reading the resume: what to look at and what to ask on a phone screen. |
 
 
 ## How to read it
 
 - Start at the top. Rows are sorted with the most posting-like first.
-- Read every row marked **YES**. The evidence and notes say why it is there.
+- Read every row marked **YES**. The text match and AI analysis columns say why it is there.
 - A YES with a low score is normal: something looked worth a glance, the row
 explains it, you move on.
 - Nothing on the sheet says whether a candidate is qualified. That is your
 call, made by reading the resume.
 
-Two rows from the example, in full, because they show what the flag means.
+Two rows from the example, in full, because they show what the flag means
+and how the three columns differ.
 
 **A generated resume that added fake-looking numbers.** The numbers got past
-the "does this have specifics" question, so the score is middling. The notes
-carry the case:
+the "does this have specifics" question, so the score is middling. The AI
+analysis carries the case:
 
 ```
 arjun_singh.md   mirror score 48
-Evidence:
+Text match analysis (code):
 - Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam with least-privilege access"
 - 8 of 9 posting acronyms present (89%)
 - 15% of posting 4-word phrases reused verbatim
-Notes:
+AI analysis (agent):
 - Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
 - Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
 - Phone screen: pick two of the percentages and ask how they were measured
@@ -176,9 +183,9 @@ the posting's acronyms appear. The row itself tells the reviewer to move on:
 
 ```
 marcus_chen.docx   mirror score 15
-Evidence:
+Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
-Notes:
+AI analysis (agent):
 - Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
 - Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
 - Nothing here suggests the wording came from the posting
@@ -209,8 +216,8 @@ npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
 **3. Ask your agent.** Examples that work:
 
 > Run resume-mirror-eval on the posting in `~/Hiring/platform-eng/jd.pdf`
-> against everything in `~/Hiring/platform-eng/applicants/`, with notes on the
-> flagged ones.
+> against everything in `~/Hiring/platform-eng/applicants/`, with AI analysis on
+> the flagged ones.
 
 > Use the resume mirror eval skill. The job description is the Senior Platform
 > Engineer req in Greenhouse and the resumes are the 62 active applications on
@@ -221,8 +228,8 @@ npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
 
 **4. The agent does the rest.** It pulls the documents from wherever you
 pointed it (folder, shared drive, ATS, link, pasted text) into a temporary
-folder, runs the analysis, writes the notes for the flagged files itself (no
-second AI account needed), tells you how many need a human and which ones and
+folder, runs the analysis, writes the AI analysis for the flagged files itself
+(no second AI account needed), tells you how many need a human and which ones and
 why, gives you the spreadsheet, repeats the disclaimer, and offers to delete
 the temporary copies.
 
@@ -245,9 +252,9 @@ and 500 are extrapolated from timed runs at 25 and 50.
 
 
 Two-page resumes cost about double and take about the same time. This does
-not include the notes.
+not include the AI analysis.
 
-**Notes on the flagged files (the optional part):**
+**AI analysis on the flagged files (the optional part):**
 
 
 | Who writes them                          | Cost                         | Time                                  |
@@ -261,14 +268,15 @@ API figures are estimates from list prices, not measurements. In the fictional
 set about 40% of files were flagged; real batches should be lower.
 
 So for a posting with 100 applicants and 40 flagged: about a cent and ten
-seconds for the scores, then under a dollar and a couple of minutes for notes
-with a frontier model, or no separate bill if your agent writes them.
+seconds for the score and text match analysis, then under a dollar and a couple
+of minutes for AI analysis with a frontier model, or no separate bill if your
+agent writes it.
 
 ## What it gets wrong
 
 - A generated resume that invents named employers and round-number metrics
 looks specific, so it scores moderate rather than high. That is the right
-outcome: it needs a human, and the notes say why.
+outcome: it needs a human, and the AI analysis says why.
 - Someone who honestly tailors their resume hard to the posting will score
 moderate too. That is why the output is a review list, not a decision.
 - If the posting itself is boilerplate, everyone scores higher. The batch z

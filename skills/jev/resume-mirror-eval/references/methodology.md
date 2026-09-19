@@ -31,13 +31,12 @@ rate the candidate's fit or qualifications: coverage of the posting's keywords
 enters the score at a low weight as a mirroring signal, and nothing in the
 output grades the person.
 
-## Layer 1: statistics in code (evidence, not score)
+## Text match analysis (code): evidence, not score
 
 Jev's documentation is blunt that the model should not count or do arithmetic.
 Everything that is a count or a ratio is computed here. All are 0..1. **None of
 these enter the mirror score, and there is no second score built from them.**
-They produce the evidence bullets, can trigger the review flag, and appear as
-raw columns on the Details sheet.
+They produce the Text match analysis column (template sentences with the counts pasted in), can trigger the review flag, and appear as raw columns on the Details sheet. No AI writes or reads that column.
 
 | Signal | What it measures | Notes |
 |---|---|---|
@@ -52,7 +51,7 @@ Two more are computed for the evidence bullets and the sheet but not weighted:
 changed) and `acronym_coverage` (share of the JD's all-caps tokens, with `SLOs`
 normalized to `SLO`, present in the resume).
 
-## Layer 2: judgments from Jev (the score)
+## Mirror score (Jev)
 
 One request per resume, state `{"job_description": ..., "resume": ...}`, six
 questions evaluated in parallel. Each names the state field it is about, states
@@ -83,6 +82,17 @@ There are no high/medium/low buckets; a single `REVIEW_SCORE` (40) feeds the
 review flag. A z-score against the batch is reported and a resume 1.5 standard
 deviations above the batch mean in a batch of five or more is marked a batch
 outlier.
+
+## AI analysis (agent)
+
+The third column is the only one an AI writes. After scoring, the agent running
+the skill (or an API model, if chosen) reads each flagged resume against the
+posting and writes two to four observations of its own: things counting cannot
+catch, such as every metric being a round number or the employers being
+unnamed, plus one thing to ask on a phone screen. It is told not to repeat the
+text match bullets, not to guess whether AI was used, and not to comment on
+fit. It is not scored. Its closing `review: yes|no` is the only part that feeds
+anything, via the review flag.
 
 ## Needs human review
 

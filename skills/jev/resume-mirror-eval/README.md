@@ -179,8 +179,70 @@ who disagrees with the weighting can re-derive their own score from the sheet.
 
 ### Usage
 
+This is an agent skill, not a command-line tool. You install it into your
+coding agent once, then ask for what you want in plain language; the agent
+reads `SKILL.md`, fetches and stages the documents, runs the analysis, writes
+the review notes, and reports back with the disclaimer.
+
+**1. Install it into your agent.**
+
+```bash
+# Claude Code
+git clone https://github.com/SecurityMindedSolutions/ai-skills.git
+mkdir -p ~/.claude/skills
+cp -R ai-skills/skills/jev/resume-mirror-eval ~/.claude/skills/
+
+# Codex, Cursor, Cline and other Agent Skills hosts
+npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
+```
+
+Set your TypeSafe key once, either `export TYPESAFE_API_KEY=...` or a line
+`TYPESAFE_API_KEY=...` in `~/.config/typesafe/env`. Keys come from
+https://console.typesafe.ai/keys.
+
+**2. Ask.** Some things that work, in Claude Code, Codex or wherever you
+installed it:
+
+> Run resume-mirror-eval on the posting in `~/Hiring/platform-eng/jd.pdf`
+> against everything in `~/Hiring/platform-eng/applicants/`, and write notes on
+> the flagged ones.
+
+> Use the resume mirror eval skill. The job description is the Senior Platform
+> Engineer req in Greenhouse and the resumes are the 62 active applications on
+> it. Put the spreadsheet in my Downloads folder.
+
+> Which of the CVs in the shared Drive folder "Q4 SRE hiring" look like they
+> were written from the posting? Here is the posting: [pasted text]
+
+> Re-run yesterday's resume screen with a 55 threshold for "high" instead of 65.
+
+The agent stages the documents in a temp folder, runs the script, writes two to
+four review bullets per flagged resume itself (no second API key), merges them,
+and tells you how many resumes need a human, which ones and why, where the
+spreadsheet is, and the disclaimer. It offers to delete the staged copies when
+it is done.
+
+**3. Read the spreadsheet.** Sort by anything you like; the first column is
+the one that matters, and the evidence and notes columns say why each row is
+there.
+
+Requirements: Python 3.10 or newer and a TypeSafe API key. Nothing to install
+beyond the skill: on first run the script creates a private virtual
+environment under the system temp directory with the `venv` and `pip` that
+ship with Python, puts its two pure-Python dependencies (pypdf, openpyxl)
+there, and re-runs itself from it. `.docx` is parsed with the standard
+library. If that bootstrap cannot happen (no pip, no network) the script
+continues with reduced output: CSV instead of xlsx, and PDF only via
+`pdftotext` if present.
+
+#### Under the hood
+
+What the agent runs. You can run it yourself, for scripting or to reproduce a
+result:
+
 ```bash
 python3 scripts/analyze.py --jd posting.md --resumes ./resumes --llm-notes agent
+python3 scripts/analyze.py --out <same out folder> --merge-notes notes.json
 ```
 
 | Flag | Purpose |
@@ -194,15 +256,8 @@ python3 scripts/analyze.py --jd posting.md --resumes ./resumes --llm-notes agent
 | `--labels labels.csv` | Score the run against `human` / `ai_tailored` labels |
 | `--llm-top N`, `--workers N`, `--model`, `--no-color` | The usual |
 
-Requirements: Python 3.10 or newer and a TypeSafe API key in `TYPESAFE_API_KEY`
-or `~/.config/typesafe/env`. Nothing to install: on first run the script
-creates a private virtual environment under the system temp directory with the
-`venv` and `pip` that ship with Python, puts its two pure-Python dependencies
-(pypdf, openpyxl) there, and re-runs itself from it; later runs reuse it. `.docx`
-is parsed with the standard library. If that bootstrap cannot happen (no pip,
-no network) the script continues with reduced output: CSV instead of xlsx, and
-PDF only via `pdftotext` if it is present. Anyone who has [uv](https://docs.astral.sh/uv/)
-can use `uv run scripts/analyze.py ...` instead and skip the bootstrap.
+Anyone who has [uv](https://docs.astral.sh/uv/) can use `uv run
+scripts/analyze.py ...` instead and skip the bootstrap.
 
 ### Mock data and results
 
@@ -275,13 +330,3 @@ they come in under a dollar.
 - Notes prompt and providers: [`scripts/llm_notes.py`](scripts/llm_notes.py).
 - Why each signal exists and what fools it: [`references/methodology.md`](references/methodology.md).
 - How an agent runs it, step by step: [`SKILL.md`](SKILL.md).
-
-### Install for other agents
-
-```bash
-npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
-```
-
-All paths in the skill are relative to its own folder, so it runs from
-`.agents/skills/`, `~/.codex/skills/`, `~/.cursor/skills/` or `~/.claude/skills/`
-alike.

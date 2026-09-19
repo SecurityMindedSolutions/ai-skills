@@ -170,6 +170,6 @@ def _column_guide() -> str:
         "Regex baseline (code): what a phrase list would have done with the same prompt. Here for comparison only.",
         "LLM judge: what a generative model asked 'is this an injection?' replied, if that baseline was run. Here for comparison only.",
         "Label / Category: ground truth from the input file when provided; used for the Comparison sheet.",
-        "Comparison sheet, first table: for each approach, how many attacks and how many benign prompts landed in each decision. Read the Attacks column for misses (anything in allow) and the Benign column for false alarms (anything in block or review).",
+        "Comparison sheet, first table: one row per approach and population (attacks, benign), one column per decision. Read across: attacks should all be in block; anything in allow was missed. Benign should all be in allow; anything in block or review is a false alarm.",
         "Details sheet: every probability, confidence, latency and token count behind the Results sheet.",
     ])

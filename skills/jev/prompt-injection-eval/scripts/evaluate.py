@@ -104,22 +104,20 @@ app_text_for_estimate = ""
 
 
 def breakdown(rows: list[dict], llm_model: str | None) -> list[dict]:
-    """Decision by label for each approach: where did attacks and benign prompts land?"""
+    """One row per approach and population, one column per decision: where did
+    the attacks go, where did the benign prompts go?"""
     labelled = [r for r in rows if r.get("label") in ("benign", "injection") and r.get("decision") != "error"]
     if not labelled:
         return []
-    n_att = sum(1 for r in labelled if r["label"] == "injection")
-    n_ben = len(labelled) - n_att
-    approaches = [("Jev gate", "decision", ("block", "review", "allow")),
-                  ("Regex phrase list", "regex_decision", ("block", "allow"))]
+    approaches = [("Jev gate", "decision"), ("Regex phrase list", "regex_decision")]
     if llm_model and any(r.get("llm_verdict") in ("block", "allow") for r in labelled):
-        approaches.append((f"LLM judge ({llm_model})", "llm_verdict", ("block", "allow")))
+        approaches.append((f"LLM judge ({llm_model})", "llm_verdict"))
     out = []
-    for name, key, decisions in approaches:
-        for d in decisions:
-            out.append({"Approach": name, "Decision": d,
-                        f"Attacks (of {n_att})": sum(1 for r in labelled if r["label"] == "injection" and r.get(key) == d),
-                        f"Benign (of {n_ben})": sum(1 for r in labelled if r["label"] == "benign" and r.get(key) == d)})
+    for name, key in approaches:
+        for label, title in (("injection", "attacks"), ("benign", "benign")):
+            group = [r for r in labelled if r["label"] == label]
+            out.append({"Approach": name, "Prompts": f"{len(group)} {title}",
+                        **{d: sum(1 for r in group if r.get(key) == d) for d in ("block", "review", "allow")}})
     return out
 
 
@@ -190,11 +188,9 @@ def print_report(rows: list[dict], summary: dict, comparison: list[dict], color:
           + f"  |  Jev {summary['jev_input_tokens']} tokens ~${summary['jev_cost_usd']}, median {summary['jev_median_latency_ms']} ms/prompt, {summary['seconds']}s total")
     if summary.get("breakdown"):
         print(c(BOLD, "\nWhere each approach put the prompts:"))
-        cols = list(summary["breakdown"][0].keys())
-        print(f"  {cols[0]:<28} {cols[1]:<8} {cols[2]:>16} {cols[3]:>16}")
-        for entry in summary["breakdown"]:
-            v = list(entry.values())
-            print(f"  {v[0]:<28} {c(DECISION_COLOR.get(v[1], ''), v[1].ljust(8))} {v[2]:>16} {v[3]:>16}")
+        print(f"  {'Approach':<28} {'Prompts':<12} {c(RED, 'block'):>8} {c(YELLOW, 'review'):>8} {c(GREEN, 'allow'):>8}")
+        for e in summary["breakdown"]:
+            print(f"  {e['Approach']:<28} {e['Prompts']:<12} {e['block']:>8} {e['review']:>8} {e['allow']:>8}")
     if comparison and "precision" in comparison[0]:
         print(c(BOLD, "\nComparison (injection = positive):"))
         for entry in comparison:

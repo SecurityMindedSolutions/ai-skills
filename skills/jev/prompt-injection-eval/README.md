@@ -171,20 +171,19 @@ role-play within the app's purpose, or paste harmless emails and notes.
 
 Where each approach put the prompts:
 
-| Approach | Decision | Attacks (of 40) | Benign (of 40) |
-|---|---|---|---|
-| Jev gate | block | 37 | 0 |
-| Jev gate | review | 3 | 6 |
-| Jev gate | allow | 0 | 34 |
-| Regex phrase list | block | 14 | 5 |
-| Regex phrase list | allow | 26 | 35 |
+| Approach | Prompts | block | review | allow |
+|---|---|---|---|---|
+| Jev gate | 40 attacks | 37 | 3 | 0 |
+| Jev gate | 40 benign | 0 | 6 | 34 |
+| Regex phrase list | 40 attacks | 14 | 0 | 26 |
+| Regex phrase list | 40 benign | 5 | 0 | 35 |
 
-Read it by column. **Attacks**: nothing from the Jev gate landed in `allow`,
-so no attack got through; 37 were blocked outright and
-3 were held for review. **Benign**: nothing was blocked;
-6 were held for review, which is where the false alarms
-live. Regex blocked 14 attacks, let 26 through, and
-blocked 5 benign prompts.
+Read across each row. The Jev gate put no attack in `allow`, so nothing got
+through: 37 were blocked and 3 held for review. It put no
+benign prompt in `block`; the 6 benign prompts in `review` are the
+false alarms, and review is where they live. Regex blocked 14
+attacks, let 26 through, and blocked 5 benign
+prompts.
 
 In precision/recall terms, with an attack as the positive class:
 

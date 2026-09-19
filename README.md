@@ -2,8 +2,8 @@
 
 Skills that let a coding agent do real work: audit a codebase you inherited, clear a
 vulnerability backlog, map what a web app is built on, run a long implementation
-unattended, say the last message again for a different reader, or screen a batch of
-resumes against a posting with TypeSafe's Jev.
+unattended, say the last message again for a different reader, or use TypeSafe's Jev
+to screen resumes against a posting and to gate prompts for injection.
 
 Each skill is a directory holding a `SKILL.md` plus whatever modules, references,
 templates or scripts it needs. They are written for [Claude
@@ -74,6 +74,7 @@ README carries the full detail: usage, options, output format and customization.
 | Command | What it does |
 |---|---|
 | [`/resume-mirror-eval`](skills/jev/resume-mirror-eval/) | Scores a batch of resumes against a job description with TypeSafe Jev plus code-side text statistics, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets |
+| [`/prompt-injection-eval`](skills/jev/prompt-injection-eval/) | Scores prompts for injection with TypeSafe Jev and returns allow / review / block for a backend gate; ships a batch evaluator that measures Jev against a regex list and an LLM judge on labelled prompts |
 <!-- END SKILL INDEX -->
 
 ## Install
@@ -106,7 +107,7 @@ keep it as it is.
 Start a new Claude Code session, then type the command. The category README linked
 beside each table above covers that skill's options and output. Three need outside tools:
 `/github-remediate-vulns` needs the `gh` CLI, `/built-with` needs Python 3, `curl`
-and Chrome, and `/resume-mirror-eval` needs Python 3.10+ and a TypeSafe API key.
+and Chrome, and the two `jev/` skills need Python 3.10+ and a TypeSafe API key.
 
 The `jev/` skills carry a research-only disclaimer. Read
 [skills/jev/README.md](skills/jev/README.md) before pointing one at a real applicant.

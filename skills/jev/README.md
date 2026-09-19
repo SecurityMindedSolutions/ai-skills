@@ -17,17 +17,17 @@ usage, output, cost and time, results, and its legal disclaimer. This page is
 only the index.
 
 > **Research proofs of concept.** Each was built to test whether a methodology
-> works, and each is a tool for directing human review, not a substitute for
-> it. Where a skill touches a regulated area such as hiring, its README opens
-> with the disclaimer: any use must comply with applicable laws, regulations
-> and policies, and you should consult your legal team before using it on
-> anything real.
+> works. Each README opens with its own disclaimer: the hiring skill directs
+> human review and must be used in compliance with applicable law with your
+> legal team's advice; the security skill is a signal for a gate, to be
+> evaluated on your own traffic and run in alert mode before block mode.
 
 ## Skills
 
 | Skill | What it does | Detail |
 |---|---|---|
 | `resume-mirror-eval` | Scores a batch of resumes against a job description for how closely their wording mirrors the posting, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets and optional review notes. About a cent and ten seconds per hundred resumes. | [README](resume-mirror-eval/README.md) |
+| `prompt-injection-eval` | Scores prompts for injection before they reach your LLM and returns allow / review / block with a risk score and reasons; a reference gate a backend can call, plus an evaluator that measures Jev against a regex list and an LLM judge on labelled prompts. About 300 ms and 7 cents per thousand prompts. | [README](prompt-injection-eval/README.md) |
 
 ## Install
 
@@ -36,9 +36,11 @@ only the index.
 git clone https://github.com/SecurityMindedSolutions/ai-skills.git
 mkdir -p ~/.claude/skills
 cp -R ai-skills/skills/jev/resume-mirror-eval ~/.claude/skills/
+cp -R ai-skills/skills/jev/prompt-injection-eval ~/.claude/skills/
 
 # Codex, Cursor, Cline and other Agent Skills hosts
 npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
+npx skills add SecurityMindedSolutions/ai-skills --skill prompt-injection-eval
 ```
 
 Paths inside each skill are relative to its own folder, so the same copy works

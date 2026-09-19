@@ -40,9 +40,9 @@ opinion. This does not do that. The scoring is done by
 you use. Jev is a decision model, not a text generator: you give it two
 documents and a fixed set of typed questions, and it returns numbers (a 0-3
 score, a probability) that come out the same way every time for the same
-input. Half of the mirror score comes from those numbers and the other half
-from plain text statistics computed in code, so the result is repeatable and
-every question and weight is written down in one file for anyone to read.
+input. The mirror score is built from those numbers alone, with the weights
+written down in one file for anyone to read. Plain code adds the evidence
+bullets, and your AI agent adds the notes; neither touches the score.
 
 Your AI agent (Claude Code, Codex, Cursor or similar) does the fetching, runs
 the analysis, and writes the short review notes. Jev does the judging.
@@ -62,21 +62,21 @@ The cost is small: about a cent per hundred resumes, detailed under
 `mock-data/` (full files in [`mock-data/example-output/`](mock-data/example-output/)):
 
 
-| Needs human review | File | Mirror score | Evidence (first line) |
+| Needs human review | File | Mirror score (Jev) | Evidence (first line) |
 |---|---|---|---|
-| **YES** | `soojin_kim.md` | 68 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a strong opinion o...". |
-| **YES** | `linh_nguyen.md` | 68 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in GitHub Actions...". |
-| **YES** | `petr_ivanov.md` | 68 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability principles, in...". |
-| **YES** | `jordan_harris.md` | 52 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" |
-| **YES** | `arjun_singh.md` | 47 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam wi...". |
-|  | `tyler_brooks.md` | 25 |  |
-| **YES** | `marcus_chen.docx` | 16 | 8 of 9 posting acronyms present (89%) |
+| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a strong opinion o... |
+| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability principles, in... |
+| **YES** | `linh_nguyen.md` | 79 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in GitHub Actions... |
+| **YES** | `jordan_harris.md` | 69 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" |
+| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam wi... |
+|  | `tyler_brooks.md` | 32 |  |
+| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) |
 |  | `dana_whitfield.md` | 14 |  |
-|  | `hanna_mueller.md` | 14 |  |
-|  | `ngozi_okafor.md` | 11 |  |
-|  | `riya_patel.pdf` | 8 |  |
-|  | `andre_williams.md` | 7 |  |
-|  | `sofia_garcia.md` | 3 |  |
+|  | `hanna_mueller.md` | 11 |  |
+|  | `ngozi_okafor.md` | 8 |  |
+|  | `riya_patel.pdf` | 6 |  |
+|  | `andre_williams.md` | 2 |  |
+|  | `sofia_garcia.md` | 2 |  |
 
 
 Why wording, not keywords: a real platform engineer's resume mentions the same
@@ -91,20 +91,12 @@ rate the candidate's qualifications or fit, on purpose.
 
 ## How it works
 
-Two halves, each worth 50% of the mirror score.
+For each resume, one request goes to TypeSafe's Jev carrying the posting and
+the resume, with six fixed questions. Jev answers all six at once, in under a
+second, for about a tenth of a cent. **The mirror score is built from those six
+answers and nothing else**, using weights written down in one file.
 
-**Plain statistics, computed in code.** No AI involved, fully reproducible:
-
-- Share of the posting's four-word phrases that appear verbatim in the resume
-- Longest run of consecutive words the two documents share
-- Whether matched terms show up in the same order as the posting
-- Overall word-level similarity, relative to the rest of the batch
-- How many of the posting's keywords and acronyms appear
-- How far this file sits from the batch average
-
-**Six judgments from TypeSafe's Jev.** Jev is a decision model, not a chatbot:
-it answers typed questions with calibrated numbers in under a second, for about
-a tenth of a cent per resume. For each file it is asked:
+The six questions:
 
 - How much of the wording is copied or lightly reworded from the posting (0-3)
 - How completely it claims every requirement, including the niche ones, in the posting's order (0-3)
@@ -112,6 +104,22 @@ a tenth of a cent per resume. For each file it is asked:
 - Does it read like a generic template (probability)
 - Does it contain job-posting language like "the ideal candidate" (probability)
 - Are the claimed skills plausible for the listed roles (probability)
+
+Alongside the score, plain code (no AI of any kind) counts things a person can
+verify by eye and turns them into the **Evidence** column:
+
+- Posting sentences that appear verbatim in the resume, with a quote
+- The longest run of consecutive words the two documents share
+- How many of the posting's acronyms appear
+- The share of the posting's four-word phrases reused word for word
+- Whether matched terms show up in the posting's order
+
+These counts do not feed the score and there is no second score built from
+them. They are there so the reviewer can check Jev's number against something
+concrete.
+
+Your AI agent writes the **Notes**: a few short observations per flagged file.
+Those are not scored either.
 
 Every question, weight and threshold is in one file,
 [`scripts/questions.py`](scripts/questions.py). If you disagree with how
@@ -130,7 +138,7 @@ written as `results.csv` and `results-detail.csv`, plus `results.json`.
 |---|---|
 | **Needs human review** | YES if anything looked worth a look, blank otherwise. It means "a person should read this file", nothing more. |
 | **File** | The resume file name (plus any ids your agent carried over from an ATS). |
-| **Mirror score** (0-100) | How closely the file's wording tracks the posting. Higher is closer. No grades or buckets, on purpose. |
+| **Mirror score (Jev)** (0-100) | Jev's measure of how closely the file's wording tracks the posting. Higher is closer. No grades or buckets, on purpose. |
 | **Evidence** | Plain facts you can check against the two documents: "7 posting sentences appear verbatim", "8 of 9 posting acronyms present". |
 | **Notes** | Two to four bullets from the agent on what to look at and what to ask on a phone screen. |
 
@@ -147,11 +155,11 @@ call, made by reading the resume.
 Two rows from the example, in full, because they show what the flag means.
 
 **A generated resume that added fake-looking numbers.** The numbers got past
-the "does this have specifics" check, so the score is only moderate. The notes
+the "does this have specifics" question, so the score is middling. The notes
 carry the case:
 
 ```
-arjun_singh.md   mirror score 47
+arjun_singh.md   mirror score 48
 Evidence:
 - Longest shared word run is 12 words: "secrets and identity using hashicorp vault and aws iam with least-privilege access"
 - 8 of 9 posting acronyms present (89%)
@@ -166,7 +174,7 @@ Notes:
 the posting's acronyms appear. The row itself tells the reviewer to move on:
 
 ```
-marcus_chen.docx   mirror score 16
+marcus_chen.docx   mirror score 15
 Evidence:
 - 8 of 9 posting acronyms present (89%)
 Notes:
@@ -225,7 +233,7 @@ install; the first run sets up what it needs in a temp folder by itself.
 Measured on the fictional set, one-page resumes, at TypeSafe's list price. 100
 and 500 are extrapolated from timed runs at 25 and 50.
 
-**Scores and evidence (the TypeSafe part):**
+**Score and evidence (the TypeSafe part):**
 
 
 | Resumes | Cost   | Time       |

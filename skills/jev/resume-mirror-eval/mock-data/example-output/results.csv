@@ -1,5 +1,5 @@
-Needs human review,File,Mirror score,Evidence (code),LLM notes
-YES,soojin_kim.md,68.5,"- 1 JD sentence appears verbatim, e.g. ""- Expert-level Terraform skills and a strong opinion on how to structure infrastructure as...""
+Needs human review,File,Mirror score (Jev),Evidence (code),LLM notes
+YES,soojin_kim.md,89.1,"- 1 JD sentence appears verbatim, e.g. ""- Expert-level Terraform skills and a strong opinion on how to structure infrastructure as...""
 - Longest shared word run is 19 words: ""on eks. expert-level terraform skills and a strong opinion on how to structure infrastructure as code for multiple ...""
 - 9 of 9 JD acronyms present (100%), all of them
 - 26% of JD 4-word phrases reused verbatim
@@ -7,14 +7,7 @@ YES,soojin_kim.md,68.5,"- 1 JD sentence appears verbatim, e.g. ""- Expert-level 
 - Few concrete specifics: employers, dates, numbers or named systems are thin","- 'Key Qualifications' is the posting's 'What we are looking for' list copied bullet for bullet, and the 'Nice to Have' section is the posting's own heading
 - Current role paragraph opens 'You will design, build and operate', which is addressed to an applicant, not written by one
 - Employers are 'Fintech Startup' and 'Technology Company'; no names, locations or outcomes"
-YES,linh_nguyen.md,67.7,"- 7 JD sentences appear verbatim, e.g. ""- Build and maintain CI/CD pipelines in GitHub Actions and ArgoCD, enabling safe, frequent...""
-- Longest shared word run is 80 words: ""infrastructure as code using terraform and terragrunt with reusable modules consumed by product teams. build and maintain ci/cd ...""
-- 9 of 9 JD acronyms present (100%), all of them
-- 36% of JD 4-word phrases reused verbatim
-- Few concrete specifics: employers, dates, numbers or named systems are thin","- All nine 'What you will do' bullets from the posting appear as the current-role bullets, in the posting's order, with 'Design, build and operate' kept in the imperative
-- Employers are 'Leading Fintech Company' and 'Global Technology Solutions Firm'; no cluster counts, team sizes, incident examples or dates beyond years
-- Phone screen: ask for one specific EKS upgrade they ran and what broke"
-YES,petr_ivanov.md,67.7,"- 2 JD sentences appear verbatim, e.g. ""- Strong understanding of observability principles, including metrics, tracing and structu...""
+YES,petr_ivanov.md,82.3,"- 2 JD sentences appear verbatim, e.g. ""- Strong understanding of observability principles, including metrics, tracing and structu...""
 - Longest shared word run is 20 words: ""flux. strong understanding of observability principles including metrics tracing and structured logging. experience with service mesh technologies such ...""
 - 9 of 9 JD acronyms present (100%), all of them
 - 30% of JD 4-word phrases reused verbatim
@@ -23,23 +16,30 @@ YES,petr_ivanov.md,67.7,"- 2 JD sentences appear verbatim, e.g. ""- Strong under
 - Claims nearly every requirement, including niche ones, without matching detail","- The 'Mission' section is the posting's 'About the role' paragraph rewritten in the first person, including 'raise the reliability bar across the company'
 - 'Summary of Qualifications' runs through every requirement bullet in posting order as a single paragraph
 - Two prior roles are one line each with unnamed employers"
-YES,jordan_harris.md,51.5,"- Longest shared word run is 8 words: ""soc 2 type ii and pci dss compliance""
+YES,linh_nguyen.md,79.6,"- 7 JD sentences appear verbatim, e.g. ""- Build and maintain CI/CD pipelines in GitHub Actions and ArgoCD, enabling safe, frequent...""
+- Longest shared word run is 80 words: ""infrastructure as code using terraform and terragrunt with reusable modules consumed by product teams. build and maintain ci/cd ...""
+- 9 of 9 JD acronyms present (100%), all of them
+- 36% of JD 4-word phrases reused verbatim
+- Few concrete specifics: employers, dates, numbers or named systems are thin","- All nine 'What you will do' bullets from the posting appear as the current-role bullets, in the posting's order, with 'Design, build and operate' kept in the imperative
+- Employers are 'Leading Fintech Company' and 'Global Technology Solutions Firm'; no cluster counts, team sizes, incident examples or dates beyond years
+- Phone screen: ask for one specific EKS upgrade they ran and what broke"
+YES,jordan_harris.md,69.4,"- Longest shared word run is 8 words: ""soc 2 type ii and pci dss compliance""
 - Few concrete specifics: employers, dates, numbers or named systems are thin
 - Claims nearly every requirement, including niche ones, without matching detail","- Each posting bullet is restated with a synonym swap ('Design, build and operate' becomes 'Architected and operated') but the same nine-bullet structure and order
 - Employers are 'Confidential Financial Services Company', 'Enterprise Software Organization' and 'Technology Consultancy'; no numbers anywhere
 - Phone screen: ask which company and what the transaction volume was"
-YES,arjun_singh.md,46.8,"- Longest shared word run is 12 words: ""secrets and identity using hashicorp vault and aws iam with least-privilege access""
+YES,arjun_singh.md,47.3,"- Longest shared word run is 12 words: ""secrets and identity using hashicorp vault and aws iam with least-privilege access""
 - 8 of 9 JD acronyms present (89%)
 - 15% of JD 4-word phrases reused verbatim","- Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
 - Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
 - Phone screen: pick two of the percentages and ask how they were measured"
-,tyler_brooks.md,24.7,,
-YES,marcus_chen.docx,15.6,- 8 of 9 JD acronyms present (89%),"- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
+,tyler_brooks.md,34.2,,
+YES,marcus_chen.docx,15.0,- 8 of 9 JD acronyms present (89%),"- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
 - Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
 - Nothing here suggests the wording came from the posting"
-,dana_whitfield.md,14.5,,
-,hanna_mueller.md,14.3,,
-,ngozi_okafor.md,11.0,,
-,riya_patel.pdf,8.2,,
-,andre_williams.md,6.8,,
-,sofia_garcia.md,3.4,,
+,dana_whitfield.md,14.9,,
+,hanna_mueller.md,12.0,,
+,ngozi_okafor.md,8.6,,
+,riya_patel.pdf,6.1,,
+,andre_williams.md,2.0,,
+,sofia_garcia.md,1.9,,

@@ -113,18 +113,15 @@ QUESTIONS = {
 }
 
 # --------------------------------------------------------------------------
-# Composite scoring. All weights within a group sum to 1.0.
+# Scoring. The mirror score is Jev's alone: 100 * the weighted sum of the
+# semantic signals below. The lexical statistics are NOT part of it; they
+# produce the evidence bullets so the deterministic Jev score stands on its
+# own. Weights sum to 1.0.
 # --------------------------------------------------------------------------
 
-# Lexical signals, computed in code. Each is already normalized to 0..1.
-LEXICAL_WEIGHTS = {
-    "phrase_overlap": 0.35,      # share of JD 4-grams found verbatim in resume
-    "longest_span": 0.20,        # longest shared word run, capped by LONGEST_SPAN_CAP
-    "order_echo": 0.15,          # do matched JD terms appear in JD order?
-    "tfidf_cosine": 0.15,        # bag-of-words similarity within the pool
-    "keyword_coverage": 0.15,    # low weight on purpose: fit is not fraud
-}
-LONGEST_SPAN_CAP = 12            # a 12+ word verbatim run scores 1.0
+# Lexical statistics are computed in code and surfaced only as evidence
+# bullets and raw Details columns. They carry no weight and form no score.
+LONGEST_SPAN_CAP = 12            # normalizes the shared-run length to 0..1 for Details
 
 # Semantic signals from Jev. Scores are divided by their top level index so
 # each lands in 0..1. "Inverted" signals are subtracted from 1 before weighting.
@@ -136,9 +133,6 @@ SEMANTIC_WEIGHTS = {
     "posting_language_leak": 0.125,
 }
 INVERTED_SIGNALS = {"concrete_specifics"}
-
-# How the two groups combine into the 0..100 mirror score.
-GROUP_WEIGHTS = {"lexical": 0.5, "semantic": 0.5}
 
 # A mirror score at or above this marks the row for human review on its own.
 # There are deliberately no "high/medium/low" buckets: the tool reports how

@@ -1,4 +1,4 @@
-"""Combine lexical metrics and Jev answers into one 0..100 mirror score.
+"""Turn Jev answers into the 0..100 mirror score.
 
 All weights and thresholds come from questions.py. Nothing here is tuned
 inline, so a reviewer can change behavior without reading this file.
@@ -34,15 +34,9 @@ def weighted(signals: dict, weights: dict, inverted: set[str] = frozenset()) -> 
     return total
 
 
-def mirror_score(lexical: dict, semantic: dict) -> dict:
-    lex = weighted(lexical, q.LEXICAL_WEIGHTS)
-    sem = weighted(semantic, q.SEMANTIC_WEIGHTS, q.INVERTED_SIGNALS)
-    combined = q.GROUP_WEIGHTS["lexical"] * lex + q.GROUP_WEIGHTS["semantic"] * sem
-    return {
-        "lexical_score": round(100 * lex, 1),
-        "semantic_score": round(100 * sem, 1),
-        "mirror_score": round(100 * combined, 1),
-    }
+def mirror_score(semantic: dict) -> dict:
+    """The mirror score is Jev's weighted composite alone."""
+    return {"mirror_score": round(100 * weighted(semantic, q.SEMANTIC_WEIGHTS, q.INVERTED_SIGNALS), 1)}
 
 
 def review_reasons(row: dict) -> list[str]:

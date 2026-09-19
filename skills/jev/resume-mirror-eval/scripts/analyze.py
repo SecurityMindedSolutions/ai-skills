@@ -89,7 +89,7 @@ def score_one(client: JevClient, jd_text: str, name: str, text: str, lexical: di
         return row
     semantic = semantic_signals(response["answers"])
     row.update(semantic)
-    row.update(mirror_score(lexical, semantic))
+    row.update(mirror_score(semantic))
     bullets, extra = evidence_bullets(jd_text, text, lexical, semantic)
     row.update(extra)
     row["evidence"] = "\n".join(f"- {b}" for b in bullets)
@@ -202,7 +202,7 @@ def build_summary(args, jd_label: str, rows: list[dict], started: float) -> dict
 
 def print_table(rows: list[dict], summary: dict, color: bool) -> None:
     c = (lambda code, s: f"{code}{s}{OFF}") if color else (lambda code, s: s)
-    print(c(BOLD, f"\n{'Review':<7} {'File':<30} {'Mirror':>6} {'z':>6}  Evidence"))
+    print(c(BOLD, f"\n{'Review':<7} {'File':<30} {'Jev':>6} {'z':>6}  Evidence"))
     for row in rows:
         review = c(RED, "YES    ") if row.get("needs_review") else "       "
         if row.get("mirror_score") is None:

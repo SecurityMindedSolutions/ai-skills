@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 DISCLAIMER = (
-    "RESEARCH PROOF OF CONCEPT. These scores measure how closely a resume's wording "
-    "tracks a job description. They do not determine whether a person used AI and "
+    "RESEARCH PROOF OF CONCEPT. The mirror score is TypeSafe Jev's measure of how closely "
+    "a resume's wording tracks a job description. They do not determine whether a person used AI and "
     "make no decision about any candidate. The 'Needs human review' column exists so "
     "that a person reads the flagged rows: this is a tool for directing human review, "
     "not a substitute for it. Any use must comply with the laws, regulations and "
@@ -21,7 +21,7 @@ DISCLAIMER = (
 SIMPLE_COLUMNS = [
     ("Needs human review", "needs_review", 12),
     ("File", "file", 34),
-    ("Mirror score", "mirror_score", 12),
+    ("Mirror score (Jev)", "mirror_score", 16),
     ("Evidence (code)", "evidence", 80),
     ("LLM notes", "llm_notes", 80),
 ]
@@ -30,11 +30,9 @@ SIMPLE_COLUMNS = [
 COLUMNS = [
     ("Needs human review", "needs_review", 12),
     ("File", "file", 34),
-    ("Mirror score", "mirror_score", 12),
+    ("Mirror score (Jev)", "mirror_score", 16),
     ("Batch z", "pool_z", 8),
     ("Batch outlier", "pool_outlier", 12),
-    ("Lexical", "lexical_score", 9),
-    ("Semantic", "semantic_score", 9),
     ("Phrase overlap", "phrase_overlap", 13),
     ("Longest span (words)", "longest_span_words", 18),
     ("Order echo", "order_echo", 10),
@@ -164,10 +162,8 @@ def _column_guide() -> str:
         "Column guide",
         "Results sheet / results.csv: the five columns a reviewer needs. Details sheet / results-detail.csv: every statistic and Jev answer behind the score.",
         "Needs human review: YES when any signal fired (mirror score at or above the review threshold, batch outlier, a code evidence bullet, a Jev flag, or the notes' review flag). Blank otherwise. It means 'a person should look at this file', not anything about the candidate.",
-        "Mirror score: 0-100 composite. Half from code statistics, half from Jev. Higher means the file's wording tracks the posting more closely. There are no high/medium/low grades on purpose.",
+        "Mirror score (Jev): 0-100, TypeSafe Jev's answers to six fixed questions, weighted as set in questions.py. Deterministic for the same input. Higher means the file's wording tracks the posting more closely. No high/medium/low grades on purpose.",
         "Batch z: how many standard deviations this file sits above or below the batch mean. Batch outlier: YES past the threshold in questions.py.",
-        "Lexical: code-computed text statistics (verbatim 4-gram overlap, longest shared span, JD-order echo, TF-IDF cosine, keyword coverage).",
-        "Semantic: TypeSafe Jev judgments (phrasing mirror, requirement echo, concrete specifics, generic template, posting-language leak, career consistency).",
-        "Evidence (code): deterministic bullets a reviewer can check against the two documents. Not scored.",
+        "Evidence (code): deterministic bullets from plain text statistics (verbatim sentences, longest shared run, acronym and phrase reuse, order) that a reviewer can check against the two documents. Not scored. The raw counts are in the Details columns.",
         "LLM notes: optional bullets from a generative model or the host agent. Anecdotal, not scored.",
     ])

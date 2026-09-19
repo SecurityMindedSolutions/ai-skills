@@ -31,25 +31,28 @@ rate the candidate's fit or qualifications: coverage of the posting's keywords
 enters the score at a low weight as a mirroring signal, and nothing in the
 output grades the person.
 
-## Layer 1: statistics in code
+## Layer 1: statistics in code (evidence, not score)
 
 Jev's documentation is blunt that the model should not count or do arithmetic.
-Everything that is a count or a ratio is computed here. All are 0..1.
+Everything that is a count or a ratio is computed here. All are 0..1. **None of
+these enter the mirror score, and there is no second score built from them.**
+They produce the evidence bullets, can trigger the review flag, and appear as
+raw columns on the Details sheet.
 
-| Signal | What it measures | Weight | Notes |
-|---|---|---|---|
-| `phrase_overlap` | Share of the JD's distinct 4-grams (with 2+ content words) that appear verbatim in the resume | 0.35 | The workhorse. Human resumes in the mock set score 0.000-0.005; verbatim copies 0.26-0.36; a synonym-swapped paraphrase 0.05. |
-| `longest_span` | Longest run of consecutive shared words, capped at 12 | 0.20 | Humans top out around 4 ("soc 2 type ii"). The evidence bullet quotes the run so a reviewer can find it. |
-| `order_echo` | Spearman correlation between the order matched terms first appear in the JD and in the resume | 0.15 | Catches paraphrases that keep the posting's structure. Needs 8+ shared terms or it reports 0. |
-| `tfidf_cosine` | Cosine similarity of TF-IDF unigram+bigram vectors, IDF fit on this batch | 0.15 | Batch-relative: terms every resume shares (the stack) are down-weighted automatically. |
-| `keyword_coverage` | Share of JD content words present anywhere in the resume | 0.15 | A genuine match covers keywords too, so this is weighted low on purpose. |
+| Signal | What it measures | Notes |
+|---|---|---|
+| `phrase_overlap` | Share of the JD's distinct 4-grams (with 2+ content words) that appear verbatim in the resume | The workhorse. Human resumes in the mock set score 0.000-0.005; verbatim copies 0.26-0.36; a synonym-swapped paraphrase 0.05. |
+| `longest_span` | Longest run of consecutive shared words | Humans top out around 4 ("soc 2 type ii"). The evidence bullet quotes the run so a reviewer can find it. |
+| `order_echo` | Spearman correlation between the order matched terms first appear in the JD and in the resume | Catches paraphrases that keep the posting's structure. Needs 8+ shared terms or it reports 0. |
+| `tfidf_cosine` | Cosine similarity of TF-IDF unigram+bigram vectors, IDF fit on this batch | Batch-relative: terms every resume shares (the stack) are down-weighted automatically. |
+| `keyword_coverage` | Share of JD content words present anywhere in the resume | A genuine match covers keywords too, so this is weighted low on purpose. |
 
 Two more are computed for the evidence bullets and the sheet but not weighted:
 `verbatim_sentences` (JD sentences that appear with only case and punctuation
 changed) and `acronym_coverage` (share of the JD's all-caps tokens, with `SLOs`
 normalized to `SLO`, present in the resume).
 
-## Layer 2: judgments from Jev
+## Layer 2: judgments from Jev (the score)
 
 One request per resume, state `{"job_description": ..., "resume": ...}`, six
 questions evaluated in parallel. Each names the state field it is about, states
@@ -68,15 +71,18 @@ are divided by N-1 here; Nouls are probabilities.
 
 ## Combining
 
-`mirror_score = 100 * (0.5 * lexical + 0.5 * semantic)`. There are no
-high/medium/low buckets; a single `REVIEW_SCORE` (40) feeds the review flag. A
-z-score against the batch is reported and a resume 1.5 standard deviations
-above the batch mean in a batch of five or more is marked a batch outlier.
+`mirror_score = 100 * weighted sum of the Jev signals` above, with
+`concrete_specifics` inverted. That is the whole score. The lexical statistics
+are kept out on purpose: the point of using Jev is a deterministic, calibrated
+number from a decision model, and mixing it with hand-tuned string statistics
+would blur what the number means. The statistics earn their place as evidence a
+human can check by eye. If a purely statistical model is wanted later, it
+should be a separate score with its own name, not folded into this one.
 
-The equal split is deliberate. The lexical half is transparent and reproducible
-without any model; the semantic half catches what it misses. When the two
-disagree the sheet shows both, and the evidence bullets show what the lexical
-half saw.
+There are no high/medium/low buckets; a single `REVIEW_SCORE` (40) feeds the
+review flag. A z-score against the batch is reported and a resume 1.5 standard
+deviations above the batch mean in a batch of five or more is marked a batch
+outlier.
 
 ## Needs human review
 
@@ -96,14 +102,14 @@ section, two off-target) and 5 generated in different styles.
 
 | Group | Mirror score range | Notes |
 |---|---|---|
-| Generated, verbatim | 67-69 | 7, 2 and 1 verbatim JD sentences; all JD acronyms present |
-| Generated, paraphrased | ~52 | Lexical half only 34; the semantic half carried it |
-| Generated, polished with metrics | ~47 | Specifics judge gave 2.99 on invented round numbers. Still flagged for review; the notes carry the case |
-| Human, keyword-padded skills | ~25 | Not flagged |
-| Human, very close match | 14-16 | One flagged for review on acronym coverage alone |
-| Human, moderate or weak match | 3-14 | |
+| Generated, verbatim | 79-89 | 7, 2 and 1 verbatim JD sentences; all JD acronyms present |
+| Generated, paraphrased | ~69 | Only 5% verbatim 4-gram overlap; Jev saw through the synonym swaps |
+| Generated, polished with metrics | ~48 | Specifics judge gave 2.99 on invented round numbers. Still flagged for review; the notes carry the case |
+| Human, keyword-padded skills | ~32 | Not flagged |
+| Human, very close match | 14-15 | One flagged for review on acronym coverage alone |
+| Human, moderate or weak match | 2-11 | |
 
-Mean score: generated 60, human 12. Pairwise AUC 1.0, which says nothing
+Mean score: generated 73, human 11. Pairwise AUC 1.0, which says nothing
 beyond "the mock set is separable" and should not be quoted as a result. Real
 data will be messier: hybrid resumes (human history, model-polished bullets),
 candidates who tailor honestly and heavily, non-native English, and postings

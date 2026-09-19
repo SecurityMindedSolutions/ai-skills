@@ -50,9 +50,10 @@ metadata:
    concrete specifics, generic template, posting-language leak, career
    consistency). Roughly 2,000 tokens and a tenth of a cent per resume; a batch
    of 100 finishes in seconds.
-4. Combines both into a 0-100 **mirror score**, plain-language **evidence
-   bullets** a reviewer can check against the two documents, and a **Needs
-   human review** flag. Nothing in the output rates the candidate's fit or
+4. Turns Jev's answers into a 0-100 **mirror score** (Jev only; the code
+   statistics never enter it), the statistics into plain-language **evidence
+   bullets** a reviewer can check against the two documents, and both into a
+   **Needs human review** flag. Nothing in the output rates the candidate's fit or
    qualifications; the tool judges the file's relationship to the posting only.
 5. Writes `results.xlsx` sorted by mirror score: a five-column Results sheet
    (review flag, file, score, evidence, notes), a Details sheet with every
@@ -200,13 +201,13 @@ Tell the user, in this order:
 | Column | Meaning |
 |---|---|
 | Needs human review | YES if any signal fired: mirror score at or above `REVIEW_SCORE` (40), batch outlier, a code evidence bullet, a Jev flag (posting language, generic text, career inconsistency) or the notes' `review: yes`. Blank otherwise. Generous on purpose. |
-| Mirror score | 0-100. Half from code statistics, half from Jev. Higher means the file's wording tracks the posting more closely. No high/medium/low buckets: the tool does not grade candidates. |
+| Mirror score (Jev) | 0-100, from Jev's six answers alone, weighted per `questions.py`. Higher means the file's wording tracks the posting more closely. No high/medium/low buckets: the tool does not grade candidates. |
 | Evidence (code) | Deterministic bullets: verbatim JD sentences with a quote, longest shared run with the text, acronym coverage, phrase reuse percentage, order echo, thin specifics. |
 | LLM notes | The bullets from step 4. Anecdotal, not scored. |
 
-The Details sheet and `results-detail.csv` hold every statistic and Jev answer
-(0-3 scores and probabilities) plus batch z-score, for anyone who wants to
-re-weight.
+The Details sheet and `results-detail.csv` hold every Jev answer (0-3 scores
+and probabilities), every text statistic with a separate 0-100 roll-up, and
+the batch z-score, for anyone who wants to re-weight.
 
 ## Mock data
 

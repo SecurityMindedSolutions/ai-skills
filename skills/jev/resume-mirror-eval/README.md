@@ -65,13 +65,13 @@ The cost is small: about a cent per hundred resumes, detailed under
 
 | Needs human review | File | Mirror score (Jev) | Text match analysis (code) | AI analysis (agent) |
 |---|---|---|---|---|
-| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | The resume's qualifications section repeats the posting's requirements list word for word, bullet by bullet |
-| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The opening "Mission" paragraph is the posting's description of the role, reworded into the first person |
-| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | The nine duties listed in the posting appear as the nine bullets of the candidate's current job, in the same o... |
-| **YES** | `jordan_harris.md` | 70 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting duty appears as a resume bullet with a word swapped ("Design, build and operate" becomes "Archite... |
-| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | The bullets follow the posting's order and wording, with a percentage added to the end of each one |
+| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | The qualifications section repeats the posting's requirements list word for word, so it tells you what the posting asked for, not what this... |
+| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The opening "Mission" paragraph is the posting's own description of the role reworded into the first person, so the candidate's stated goal... |
+| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | The nine duties listed in the posting appear as the nine bullets of the current job, in the same order and nearly the same words, which is w... |
+| **YES** | `jordan_harris.md` | 70 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting duty appears as a resume bullet with one word swapped ("Design, build and operate" becomes "Architected and operated") in the s... |
+| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | The bullets follow the posting's order and wording with a percentage added to each, so the results look measured but the underlying claims a... |
 |  | `tyler_brooks.md` | 33 |  |  |
-| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only because most of the posting's acronyms appear; the wording is the candidate's own and mentions to... |
+| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only because most of the posting's acronyms appear, which is expected for someone who has this stack; the wording is the candidate's... |
 |  | `dana_whitfield.md` | 15 |  |  |
 |  | `hanna_mueller.md` | 12 |  |  |
 |  | `ngozi_okafor.md` | 9 |  |  |
@@ -147,7 +147,7 @@ written as `results.csv` and `results-detail.csv`, plus `results.json`.
 | **File** | | The resume file name (plus any ids your agent carried over from an ATS). |
 | **Mirror score (Jev)** | TypeSafe's Jev | 0-100. How closely the file's wording tracks the posting. Higher is closer. No grades or buckets, on purpose. |
 | **Text match analysis (code)** | Python string matching, no AI | Exact counts a person can verify: "7 posting sentences appear verbatim", "8 of 9 posting acronyms present". |
-| **AI analysis (agent)** | Your AI agent | Two to four bullets from reading the resume: what to look at and what to ask on a phone screen. |
+| **AI analysis (agent)** | Your AI agent | Two to four bullets from reading the resume: what it noticed, why that matters, and what to ask on a phone screen. |
 
 
 ## How to read it
@@ -173,10 +173,10 @@ Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 - 15% of posting 4-word phrases reused verbatim
 AI analysis (agent):
-- The bullets follow the posting's order and wording, with a percentage added to the end of each one
-- Every percentage is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
-- Employers and dates are real-looking, but no number is tied to a specific system, incident or time period
-- Phone screen: pick two of the percentages and ask how they were measured
+- The bullets follow the posting's order and wording with a percentage added to each, so the results look measured but the underlying claims are still the posting's
+- Every percentage is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%, which is what invented metrics tend to look like
+- Employers and dates look real, but no number is tied to a specific system, incident or time period, so the specifics may be decoration rather than evidence
+- Phone screen: pick two of the percentages and ask how they were measured; real ones come with a story, invented ones do not
 ```
 
 **A strong human candidate, in their own words.** Flagged only because most of
@@ -187,8 +187,8 @@ marcus_chen.docx   mirror score 15
 Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 AI analysis (agent):
-- Flagged only because most of the posting's acronyms appear; the wording is the candidate's own and mentions tools the posting never does
-- Plenty of concrete detail: 14 AWS accounts, about $2B in payment volume, a 31% cost reduction with the specific steps that got there
+- Flagged only because most of the posting's acronyms appear, which is expected for someone who has this stack; the wording is the candidate's own and names tools the posting never mentions
+- The detail is specific enough to check (14 AWS accounts, about $2B in payment volume, a 31% cost cut with the steps that got there), which is the opposite of what a resume written from a posting looks like
 - Nothing suggests the wording came from the posting
 ```
 

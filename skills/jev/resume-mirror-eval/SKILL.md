@@ -155,18 +155,20 @@ one write 2 to 4 bullets that a recruiter could verify by reading the two
 documents, in this style:
 
 ```
-- The nine duties listed in the posting appear as the nine bullets of the candidate's current job, in the same order and nearly the same words
-- The employers are described only as "Leading Fintech Company" and "Global Technology Solutions Firm", with no names, team sizes, numbers or incidents
-- Phone screen: ask about one specific Kubernetes upgrade they ran and what went wrong
+- The nine duties listed in the posting appear as the nine bullets of the current job, in the same order and nearly the same words, which is what you get when a resume is written from the posting rather than from memory of the work
+- The employers are given only as "Leading Fintech Company" and "Global Technology Solutions Firm", with no names, team sizes, numbers or incidents, so there is nothing here that could be checked
+- Phone screen: ask about one specific Kubernetes upgrade they ran and what went wrong; someone who did the work will have a story
 review: yes
 ```
 
 Rules: no summary sentence, no heading, no markdown beyond `- `. Each bullet
-is one plain, complete sentence a recruiter understands on first read. Say what
-the resume did in ordinary words ("the qualifications section repeats the
-posting's requirements list word for word"), not shorthand that maps one
-heading to another. Quote the resume only when the quote is the point. Do not
-repeat the text-match bullets. Never say or guess whether the candidate used AI;
+is one plain sentence a recruiter understands on first read, and it says why
+the observation matters: what you saw, then what it suggests ("...repeats the
+posting's requirements list word for word, so it tells you what the posting
+asked for, not what this person has done"). Never leave a bare observation the
+reader has to interpret. No shorthand that maps one heading to another. Quote
+the resume only when the quote is the point. Do not repeat the text-match
+bullets. Never say or guess whether the candidate used AI;
 describe what is on the page. End with exactly `review: yes` or `review: no`
 depending on whether a human should read it before ranking. Save the notes as
 a JSON object mapping file name to note text, then merge:

@@ -103,6 +103,26 @@ def prf(rows: list[dict], positive) -> dict:
 app_text_for_estimate = ""
 
 
+def breakdown(rows: list[dict], llm_model: str | None) -> list[dict]:
+    """Decision by label for each approach: where did attacks and benign prompts land?"""
+    labelled = [r for r in rows if r.get("label") in ("benign", "injection") and r.get("decision") != "error"]
+    if not labelled:
+        return []
+    n_att = sum(1 for r in labelled if r["label"] == "injection")
+    n_ben = len(labelled) - n_att
+    approaches = [("Jev gate", "decision", ("block", "review", "allow")),
+                  ("Regex phrase list", "regex_decision", ("block", "allow"))]
+    if llm_model and any(r.get("llm_verdict") in ("block", "allow") for r in labelled):
+        approaches.append((f"LLM judge ({llm_model})", "llm_verdict", ("block", "allow")))
+    out = []
+    for name, key, decisions in approaches:
+        for d in decisions:
+            out.append({"Approach": name, "Decision": d,
+                        f"Attacks (of {n_att})": sum(1 for r in labelled if r["label"] == "injection" and r.get(key) == d),
+                        f"Benign (of {n_ben})": sum(1 for r in labelled if r["label"] == "benign" and r.get(key) == d)})
+    return out
+
+
 def compare(rows: list[dict], llm_model: str | None) -> list[dict]:
     scored = [r for r in rows if r.get("decision") != "error"]
     labelled = [r for r in scored if r.get("label") in ("benign", "injection")]
@@ -121,11 +141,11 @@ def compare(rows: list[dict], llm_model: str | None) -> list[dict]:
 
     lat = lambda xs: {"median latency ms": round(statistics.median(xs)) if xs else None,
                       "p95 latency ms": round(sorted(xs)[int(0.95 * (len(xs) - 1))]) if xs else None}
-    out.append(row("Jev gate: block only", lambda r: r["decision"] == "block",
+    out.append(row("Jev gate, counting block as caught", lambda r: r["decision"] == "block",
                    {"tokens per prompt": round(jev_tokens / n) if n else None,
                     "cost per 1,000 prompts": round(1000 * (jev_tokens / n) * q.USD_PER_MILLION_INPUT_TOKENS / 1e6, 4) if n else None},
                    lat(jev_lat)))
-    out.append(row("Jev gate: block or review", lambda r: r["decision"] in ("block", "review"),
+    out.append(row("Jev gate, counting block or review as caught", lambda r: r["decision"] in ("block", "review"),
                    {"tokens per prompt": round(jev_tokens / n) if n else None,
                     "cost per 1,000 prompts": round(1000 * (jev_tokens / n) * q.USD_PER_MILLION_INPUT_TOKENS / 1e6, 4) if n else None},
                    lat(jev_lat)))
@@ -168,6 +188,13 @@ def print_report(rows: list[dict], summary: dict, comparison: list[dict], color:
     print(c(BOLD, f"\n{summary['prompts']} prompts: ") + c(RED, f"{counts.get('block', 0)} block") + ", "
           + c(YELLOW, f"{counts.get('review', 0)} review") + ", " + c(GREEN, f"{counts.get('allow', 0)} allow")
           + f"  |  Jev {summary['jev_input_tokens']} tokens ~${summary['jev_cost_usd']}, median {summary['jev_median_latency_ms']} ms/prompt, {summary['seconds']}s total")
+    if summary.get("breakdown"):
+        print(c(BOLD, "\nWhere each approach put the prompts:"))
+        cols = list(summary["breakdown"][0].keys())
+        print(f"  {cols[0]:<28} {cols[1]:<8} {cols[2]:>16} {cols[3]:>16}")
+        for entry in summary["breakdown"]:
+            v = list(entry.values())
+            print(f"  {v[0]:<28} {c(DECISION_COLOR.get(v[1], ''), v[1].ljust(8))} {v[2]:>16} {v[3]:>16}")
     if comparison and "precision" in comparison[0]:
         print(c(BOLD, "\nComparison (injection = positive):"))
         for entry in comparison:
@@ -175,7 +202,7 @@ def print_report(rows: list[dict], summary: dict, comparison: list[dict], color:
                 print(f"  {entry['Approach']}: {entry['tokens per prompt']} tokens/prompt, "
                       + ", ".join(f"${v}/1k at {k.split(' at ')[1].replace(' rates', '')}" for k, v in entry.items() if k.startswith("cost per 1,000 prompts at")))
                 continue
-            print(f"  {entry['Approach']:<34} caught {entry['caught']:>3}  missed {entry['missed']:>3}  false alarms {entry['false alarms']:>3}"
+            print(f"  {entry['Approach']:<46} caught {entry['caught']:>3}  missed {entry['missed']:>3}  false alarms {entry['false alarms']:>3}"
                   f"  P {entry['precision']:.2f}  R {entry['recall']:.2f}  F1 {entry['F1']:.2f}"
                   f"  median {entry['median latency ms']} ms")
     print(c(DIM, "\n" + DISCLAIMER))
@@ -210,6 +237,7 @@ def main() -> None:
         "seconds": round(time.time() - started, 1),
     }
     comparison = compare(rows, args.llm_judge)
+    summary["breakdown"] = breakdown(rows, args.llm_judge)
     paths = write_all(out_dir, rows, summary, comparison)
     print_report(rows, summary, comparison, color=not args.no_color)
     main_out = paths.get("xlsx") or paths["csv"]

@@ -91,8 +91,8 @@ def _write_xlsx(path: Path, rows: list[dict], summary: dict, comparison: list[di
     bold = Font(bold=True)
     _results_sheet(book.active, "Results", rows, SIMPLE_COLUMNS, bold)
     _results_sheet(book.create_sheet("Details"), "Details", rows, DETAIL_COLUMNS, bold)
-    _comparison_sheet(book, comparison, bold)
-    _kv_sheet(book, "Summary", summary, bold)
+    _comparison_sheet(book, comparison, summary.get("breakdown", []), bold)
+    _kv_sheet(book, "Summary", {k: v for k, v in summary.items() if k != "breakdown"}, bold)
     _text_sheet(book, "Read me", DISCLAIMER + "\n\n" + _column_guide())
     book.save(path)
 
@@ -117,17 +117,29 @@ def _results_sheet(sheet, title: str, rows: list[dict], columns: list[tuple], bo
     sheet.auto_filter.ref = sheet.dimensions
 
 
-def _comparison_sheet(book, comparison: list[dict], bold) -> None:
-    if not comparison:
+def _comparison_sheet(book, comparison: list[dict], breakdown: list[dict], bold) -> None:
+    if not comparison and not breakdown:
         return
     sheet = book.create_sheet("Comparison")
-    headers = list(comparison[0].keys())
-    for col, h in enumerate(headers, start=1):
-        sheet.cell(row=1, column=col, value=h).font = bold
+    r = 1
+    if breakdown:
+        sheet.cell(row=r, column=1, value="Where each approach put the prompts").font = bold
+        r = _table(sheet, r + 1, breakdown, bold) + 2
+    if comparison:
+        sheet.cell(row=r, column=1, value="Precision and recall (injection = positive), latency, cost").font = bold
+        _table(sheet, r + 1, comparison, bold)
+    for col in range(1, 16):
         sheet.column_dimensions[sheet.cell(row=1, column=col).column_letter].width = 22
-    for r, row in enumerate(comparison, start=2):
+
+
+def _table(sheet, start_row: int, rows: list[dict], bold) -> int:
+    headers = list(rows[0].keys())
+    for col, h in enumerate(headers, start=1):
+        sheet.cell(row=start_row, column=col, value=h).font = bold
+    for i, row in enumerate(rows, start=start_row + 1):
         for col, h in enumerate(headers, start=1):
-            sheet.cell(row=r, column=col, value=row.get(h, ""))
+            sheet.cell(row=i, column=col, value=row.get(h, ""))
+    return start_row + len(rows)
 
 
 def _kv_sheet(book, title: str, data: dict, bold) -> None:
@@ -158,5 +170,6 @@ def _column_guide() -> str:
         "Regex baseline (code): what a phrase list would have done with the same prompt. Here for comparison only.",
         "LLM judge: what a generative model asked 'is this an injection?' replied, if that baseline was run. Here for comparison only.",
         "Label / Category: ground truth from the input file when provided; used for the Comparison sheet.",
+        "Comparison sheet, first table: for each approach, how many attacks and how many benign prompts landed in each decision. Read the Attacks column for misses (anything in allow) and the Benign column for false alarms (anything in block or review).",
         "Details sheet: every probability, confidence, latency and token count behind the Results sheet.",
     ])

@@ -247,6 +247,13 @@ JD text (so `--merge-notes` can rebuild the sheet) but never the resume text;
 `notes-request.json` does contain resume text and lives in the same temp
 folder.
 
+**Cost and time.** Measured: about 2,200 Jev input tokens and $0.00009 per
+one-page resume, 0.33 s per request sequentially or about 0.08 s at the default
+four workers. 100 resumes is roughly 220k tokens, one cent, and ten seconds; 500
+is about five cents and 45 seconds. Review notes by API model are the only
+significant cost and only run on flagged rows. Quote these to the user when
+they ask what a batch will cost.
+
 **Limits.** Jev's context budget is 32k tokens for the state plus the longest
 question; each document is capped at 24,000 characters. Rate limits are retried
 with exponential backoff, honoring `retry-after`. Jev is English-first; other

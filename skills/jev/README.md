@@ -161,6 +161,46 @@ with invented round-number metrics fools the specifics judge and lands in
 Separable mock data proves the mechanics, not the method; real, labelled data
 is the next step and `--labels` reports the numbers when it arrives.
 
+### Cost and time
+
+Measured on the mock set (one-page resumes, about 2,200 Jev input tokens each
+including the posting) at Jev's list price of $0.042 per million input tokens,
+output free. The wall time includes text extraction, the statistics and writing
+the spreadsheet; all of that is a rounding error next to the network calls.
+Runs at 25 and 50 resumes were timed directly; 100 and 500 are extrapolated,
+which is safe because every resume is one independent request and the batch
+stays far below Jev's rate limits (1,200 requests and 250,000 tokens per
+second).
+
+| Resumes | Jev tokens | Jev cost | Wall time, 1 worker | Wall time, 4 workers (default) |
+|---|---|---|---|---|
+| 25 | 56k | $0.002 | 8 s | 3 s |
+| 100 | 220k | $0.009 | 35 s | 10 s |
+| 500 | 1.1M | $0.05 | 3 min | 45 s |
+
+Two-page resumes roughly double the tokens and the cost; time is dominated by
+request latency, not size, so it barely moves. Re-running a batch after a
+threshold change costs the same again.
+
+**Review notes are the variable.** Only flagged rows get notes (about 40% of
+the mock set, which is higher than a real batch should be since five of its
+thirteen resumes were written to be caught). Per note, the model reads the
+posting, the resume, the scores and the code evidence (about 1,700 input
+tokens) and writes four bullets (about 150 output tokens):
+
+| Notes provider | Per note | 100 resumes, 40 flagged |
+|---|---|---|
+| The agent running the skill (`--llm-notes agent`) | Whatever your agent's plan charges; typically a few seconds of reading per resume | No separate bill |
+| Claude Opus 5 by API, list price | about $0.012, a few seconds | about $0.50 |
+| Claude Sonnet 5 by API, list price | about $0.005, a few seconds | about $0.20 |
+| Any OpenAI-compatible model | that model's rate on ~1,700 in / ~150 out | varies |
+
+The API figures are estimates from list prices, not measurements, and exclude
+anything the model provider adds for thinking tokens. The shape of the result
+is what matters: for a posting with 100 applicants, the statistical pass costs
+about a cent and finishes before you have switched windows, and the notes on
+the forty that need a look cost less than a dollar with a frontier model.
+
 ### Customization
 
 - Weights, thresholds and every Jev question: `scripts/questions.py`.

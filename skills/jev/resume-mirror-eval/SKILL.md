@@ -155,14 +155,18 @@ one write 2 to 4 bullets that a recruiter could verify by reading the two
 documents, in this style:
 
 ```
-- Each of the posting's nine duty bullets appears as a current-role bullet in the same order
-- Employers are "Leading Fintech Company" and "Global Technology Solutions Firm"; no cluster counts, dates beyond years, or incidents
-- Phone screen: ask for one specific EKS upgrade they ran and what broke
+- The nine duties listed in the posting appear as the nine bullets of the candidate's current job, in the same order and nearly the same words
+- The employers are described only as "Leading Fintech Company" and "Global Technology Solutions Firm", with no names, team sizes, numbers or incidents
+- Phone screen: ask about one specific Kubernetes upgrade they ran and what went wrong
 review: yes
 ```
 
-Rules: no summary sentence, no heading, no markdown beyond `- `. Do not repeat
-the code evidence bullets. Never say or guess whether the candidate used AI;
+Rules: no summary sentence, no heading, no markdown beyond `- `. Each bullet
+is one plain, complete sentence a recruiter understands on first read. Say what
+the resume did in ordinary words ("the qualifications section repeats the
+posting's requirements list word for word"), not shorthand that maps one
+heading to another. Quote the resume only when the quote is the point. Do not
+repeat the text-match bullets. Never say or guess whether the candidate used AI;
 describe what is on the page. End with exactly `review: yes` or `review: no`
 depending on whether a human should read it before ranking. Save the notes as
 a JSON object mapping file name to note text, then merge:

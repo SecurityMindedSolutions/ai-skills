@@ -65,13 +65,13 @@ The cost is small: about a cent per hundred resumes, detailed under
 
 | Needs human review | File | Mirror score (Jev) | Text match analysis (code) | AI analysis (agent) |
 |---|---|---|---|---|
-| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | 'Key Qualifications' is the posting's 'What we are looking for' list copied bull... |
-| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The 'Mission' section is the posting's 'About the role' paragraph rewritten in t... |
-| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | All nine 'What you will do' bullets from the posting appear as the current-role... |
-| **YES** | `jordan_harris.md` | 69 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting bullet is restated with a synonym swap ('Design, build and operate'... |
-| **YES** | `arjun_singh.md` | 47 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | Bullets follow the posting's order and wording, then append a metric to each; th... |
-|  | `tyler_brooks.md` | 34 |  |  |
-| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only for acronym coverage; wording is the candidate's own, with tools th... |
+| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | The resume's qualifications section repeats the posting's requirements list word for word, bullet by bullet |
+| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The opening "Mission" paragraph is the posting's description of the role, reworded into the first person |
+| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | The nine duties listed in the posting appear as the nine bullets of the candidate's current job, in the same o... |
+| **YES** | `jordan_harris.md` | 70 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting duty appears as a resume bullet with a word swapped ("Design, build and operate" becomes "Archite... |
+| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | The bullets follow the posting's order and wording, with a percentage added to the end of each one |
+|  | `tyler_brooks.md` | 33 |  |  |
+| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only because most of the posting's acronyms appear; the wording is the candidate's own and mentions to... |
 |  | `dana_whitfield.md` | 15 |  |  |
 |  | `hanna_mueller.md` | 12 |  |  |
 |  | `ngozi_okafor.md` | 9 |  |  |
@@ -173,8 +173,9 @@ Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 - 15% of posting 4-word phrases reused verbatim
 AI analysis (agent):
-- Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
-- Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
+- The bullets follow the posting's order and wording, with a percentage added to the end of each one
+- Every percentage is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
+- Employers and dates are real-looking, but no number is tied to a specific system, incident or time period
 - Phone screen: pick two of the percentages and ask how they were measured
 ```
 
@@ -186,9 +187,9 @@ marcus_chen.docx   mirror score 15
 Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 AI analysis (agent):
-- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
-- Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
-- Nothing here suggests the wording came from the posting
+- Flagged only because most of the posting's acronyms appear; the wording is the candidate's own and mentions tools the posting never does
+- Plenty of concrete detail: 14 AWS accounts, about $2B in payment volume, a 31% cost reduction with the specific steps that got there
+- Nothing suggests the wording came from the posting
 ```
 
 ## How to install and use it

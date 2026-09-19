@@ -4,39 +4,40 @@ YES,soojin_kim.md,88.6,1.58,YES,0.2643,19,0.3404,0.4053,0.4954,2.99,2.3,0.74,0.7
 - 9 of 9 JD acronyms present (100%), all of them
 - 26% of JD 4-word phrases reused verbatim
 - Contains job-posting phrasing (e.g. 'ideal candidate', 'you will')
-- Few concrete specifics: employers, dates, numbers or named systems are thin","- 'Key Qualifications' is the posting's 'What we are looking for' list copied bullet for bullet, and the 'Nice to Have' section is the posting's own heading
-- Current role paragraph opens 'You will design, build and operate', which is addressed to an applicant, not written by one
-- Employers are 'Fintech Startup' and 'Technology Company'; no names, locations or outcomes",
+- Few concrete specifics: employers, dates, numbers or named systems are thin","- The resume's qualifications section repeats the posting's requirements list word for word, bullet by bullet
+- The current job is described as ""You will design, build and operate..."", which is how a posting talks to an applicant, not how a person describes their own work
+- Employers are given only as ""Fintech Startup"" and ""Technology Company""",
 YES,petr_ivanov.md,82.3,1.392,,0.3042,20,0.4172,0.4624,0.5734,2.99,2.58,0.86,0.69,0.59,0.9,2,1.0,311,"- 2 JD sentences appear verbatim, e.g. ""- Strong understanding of observability principles, including metrics, tracing and structu...""
 - Longest shared word run is 20 words: ""flux. strong understanding of observability principles including metrics tracing and structured logging. experience with service mesh technologies such ...""
 - 9 of 9 JD acronyms present (100%), all of them
 - 30% of JD 4-word phrases reused verbatim
 - Contains job-posting phrasing (e.g. 'ideal candidate', 'you will')
 - Few concrete specifics: employers, dates, numbers or named systems are thin
-- Claims nearly every requirement, including niche ones, without matching detail","- The 'Mission' section is the posting's 'About the role' paragraph rewritten in the first person, including 'raise the reliability bar across the company'
-- 'Summary of Qualifications' runs through every requirement bullet in posting order as a single paragraph
-- Two prior roles are one line each with unnamed employers",
+- Claims nearly every requirement, including niche ones, without matching detail","- The opening ""Mission"" paragraph is the posting's description of the role, reworded into the first person
+- The qualifications summary walks through every posting requirement in the posting's order as one long paragraph
+- The two earlier jobs are a single line each, with unnamed employers",
 YES,linh_nguyen.md,79.8,1.318,,0.3591,80,0.58,0.4738,0.555,2.99,2.53,0.96,0.83,0.33,0.92,7,1.0,317,"- 7 JD sentences appear verbatim, e.g. ""- Build and maintain CI/CD pipelines in GitHub Actions and ArgoCD, enabling safe, frequent...""
 - Longest shared word run is 80 words: ""infrastructure as code using terraform and terragrunt with reusable modules consumed by product teams. build and maintain ci/cd ...""
 - 9 of 9 JD acronyms present (100%), all of them
 - 36% of JD 4-word phrases reused verbatim
 - Few concrete specifics: employers, dates, numbers or named systems are thin
-- Claims nearly every requirement, including niche ones, without matching detail","- All nine 'What you will do' bullets from the posting appear as the current-role bullets, in the posting's order, with 'Design, build and operate' kept in the imperative
-- Employers are 'Leading Fintech Company' and 'Global Technology Solutions Firm'; no cluster counts, team sizes, incident examples or dates beyond years
-- Phone screen: ask for one specific EKS upgrade they ran and what broke",
+- Claims nearly every requirement, including niche ones, without matching detail","- The nine duties listed in the posting appear as the nine bullets of the candidate's current job, in the same order and nearly the same words
+- The employers are described only as ""Leading Fintech Company"" and ""Global Technology Solutions Firm"", with no names, team sizes, numbers or incidents
+- Phone screen: ask about one specific Kubernetes upgrade they ran and what went wrong",
 YES,jordan_harris.md,69.5,1.011,,0.0549,8,0.539,0.2404,0.4541,2.79,2.48,0.9,0.47,0.05,0.92,0,0.778,308,"- Longest shared word run is 8 words: ""soc 2 type ii and pci dss compliance""
-- Few concrete specifics: employers, dates, numbers or named systems are thin","- Each posting bullet is restated with a synonym swap ('Design, build and operate' becomes 'Architected and operated') but the same nine-bullet structure and order
-- Employers are 'Confidential Financial Services Company', 'Enterprise Software Organization' and 'Technology Consultancy'; no numbers anywhere
-- Phone screen: ask which company and what the transaction volume was",
+- Few concrete specifics: employers, dates, numbers or named systems are thin","- Each posting duty appears as a resume bullet with a word swapped (""Design, build and operate"" becomes ""Architected and operated""), keeping the same nine-bullet order
+- Employers are given as ""Confidential Financial Services Company"", ""Enterprise Software Organization"" and ""Technology Consultancy""; there are no numbers anywhere
+- Phone screen: ask which company it was and how much transaction volume it handled",
 YES,arjun_singh.md,48.3,0.379,,0.1521,12,0.6037,0.2672,0.4495,2.85,2.65,2.99,0.07,0.04,0.89,0,0.889,387,"- Longest shared word run is 12 words: ""secrets and identity using hashicorp vault and aws iam with least-privilege access""
 - 8 of 9 JD acronyms present (89%)
-- 15% of JD 4-word phrases reused verbatim","- Bullets follow the posting's order and wording, then append a metric to each; the metrics are all round (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
-- Named employers and dates are present, so the specifics score is high, but no metric is tied to a system, incident or timeframe
+- 15% of JD 4-word phrases reused verbatim","- The bullets follow the posting's order and wording, with a percentage added to the end of each one
+- Every percentage is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%
+- Employers and dates are real-looking, but no number is tied to a specific system, incident or time period
 - Phone screen: pick two of the percentages and ask how they were measured",
 ,tyler_brooks.md,33.2,-0.071,,0.005,4,0.2623,0.0917,0.2294,1.63,1.99,2.95,0.09,0.26,0.9,0,0.778,251,,,
-YES,marcus_chen.docx,15.0,-0.613,,0.0,3,0.4098,0.0749,0.2385,0.45,2.39,3.0,0.04,0.04,0.92,0,0.889,424,- 8 of 9 JD acronyms present (89%),"- Flagged only for acronym coverage; wording is the candidate's own, with tools the posting never mentions (Karpenter, Cilium, cosign, Thanos, Loki, Patroni, Strimzi)
-- Concrete detail throughout: 14 AWS accounts, ~$2B volume, 31% cost reduction with the named levers, a 200-star Terraform provider
-- Nothing here suggests the wording came from the posting",
+YES,marcus_chen.docx,15.0,-0.613,,0.0,3,0.4098,0.0749,0.2385,0.45,2.39,3.0,0.04,0.04,0.92,0,0.889,424,- 8 of 9 JD acronyms present (89%),"- Flagged only because most of the posting's acronyms appear; the wording is the candidate's own and mentions tools the posting never does
+- Plenty of concrete detail: 14 AWS accounts, about $2B in payment volume, a 31% cost reduction with the specific steps that got there
+- Nothing suggests the wording came from the posting",
 ,dana_whitfield.md,14.6,-0.625,,0.0025,4,0.157,0.0661,0.2431,0.43,2.43,3.0,0.03,0.03,0.93,0,0.778,456,,,
 ,hanna_mueller.md,12.1,-0.699,,0.0,3,0.6236,0.0473,0.133,0.59,0.37,2.87,0.08,0.07,0.9,0,0.333,247,,,
 ,ngozi_okafor.md,9.1,-0.789,,0.0,3,0.2827,0.0621,0.1927,0.35,0.94,2.99,0.06,0.04,0.9,0,0.444,261,,,

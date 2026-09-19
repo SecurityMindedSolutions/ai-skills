@@ -1,16 +1,19 @@
 # AI Skills
 
-Skills that let a coding agent do real work on a codebase: audit one you inherited,
-clear a vulnerability backlog, map what a web app is built on, run a long
-implementation unattended, or say the last message again for a different reader.
+Skills that let a coding agent do real work: audit a codebase you inherited, clear a
+vulnerability backlog, map what a web app is built on, run a long implementation
+unattended, say the last message again for a different reader, or screen a batch of
+resumes against a posting with TypeSafe's Jev.
 
 Each skill is a directory holding a `SKILL.md` plus whatever modules, references,
 templates or scripts it needs. They are written for [Claude
 Code](https://docs.anthropic.com/en/docs/claude-code) and lean on it: the three audits
-and the vulnerability remediator dispatch parallel sub-agents, and every skill outside
-`communication/` reads its own bundled files from `~/.claude/skills/`. The four
-communication skills are plain instructions with no such dependency, and will work in
-any agent that can follow them.
+and the vulnerability remediator dispatch parallel sub-agents, and the audit, remediation,
+recon and Ralph skills read their own bundled files from `~/.claude/skills/`. The four
+communication skills are plain instructions with no such dependency, and the `jev/`
+skills reference their files relative to their own folder, so both groups work in any
+agent that follows the [Agent Skills](https://agentskills.io) format (Codex, Cursor,
+Cline and others via `npx skills add SecurityMindedSolutions/ai-skills --skill <name>`).
 
 ## Skills
 
@@ -63,6 +66,14 @@ README carries the full detail: usage, options, output format and customization.
 | [`/elim`](skills/communication/elim/) | Restates the last message for a manager: no code names, no shop talk, and no invented urgency |
 | [`/ugh`](skills/communication/ugh/) | One breath. Restates the last message as a single sentence, plus a You line only when something actually needs you |
 | [`/huh`](skills/communication/huh/) | Now, next, you. Restates the last message as three labelled lines for picking a dropped thread back up |
+
+### Jev
+
+[`skills/jev/`](skills/jev/) - skills built on TypeSafe's Jev, a decision model that answers typed questions about a document with calibrated numbers instead of generating text; code does the math, Jev does the judgment, and the agent does the fetching. Usage, options and output format in [its README](skills/jev/README.md).
+
+| Command | What it does |
+|---|---|
+| [`/resume-mirror-eval`](skills/jev/resume-mirror-eval/) | Scores a batch of resumes against a job description with TypeSafe Jev plus code-side text statistics, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets |
 <!-- END SKILL INDEX -->
 
 ## Install
@@ -93,9 +104,13 @@ ships `ralph.sh` alongside its templates. The directory name is the command name
 keep it as it is.
 
 Start a new Claude Code session, then type the command. The category README linked
-beside each table above covers that skill's options and output. Two need outside tools:
-`/github-remediate-vulns` needs the `gh` CLI, and `/built-with` needs Python 3, `curl`
-and Chrome.
+beside each table above covers that skill's options and output. Three need outside tools:
+`/github-remediate-vulns` needs the `gh` CLI, `/built-with` needs Python 3, `curl`
+and Chrome, and `/resume-mirror-eval` needs [uv](https://docs.astral.sh/uv/) and a
+TypeSafe API key.
+
+The `jev/` skills carry a research-only disclaimer. Read
+[skills/jev/README.md](skills/jev/README.md) before pointing one at a real applicant.
 
 ## License
 

@@ -44,6 +44,8 @@ CATEGORIES = [
      ["built-with"]),
     ("communication", "Communication",
      ["again", "elim", "ugh", "huh"]),
+    ("jev", "Jev",
+     ["resume-mirror-eval"]),
 ]
 
 RED, GREEN, YELLOW, BOLD, OFF = "\033[91m", "\033[92m", "\033[93m", "\033[1m", "\033[0m"

@@ -8,15 +8,13 @@ import sys
 from pathlib import Path
 
 DISCLAIMER = (
-    "RESEARCH PROOF OF CONCEPT. These scores are statistical signals about how "
-    "closely a resume's wording tracks a job description. They are not evidence "
-    "that a candidate used AI, and they must not be used to reject anyone "
-    "automatically. A candidate whose experience genuinely matches the role will "
-    "score higher than average. Use of AI tools in hiring is regulated in many "
-    "jurisdictions (for example the EU AI Act, NYC Local Law 144, Illinois AIVIA, "
-    "Colorado SB 24-205 and US EEOC guidance). Anyone using this for real hiring "
-    "decisions is responsible for complying with the laws that apply to them and "
-    "should consult their own legal counsel first."
+    "RESEARCH PROOF OF CONCEPT. These scores measure how closely a resume's wording "
+    "tracks a job description. They do not determine whether a person used AI and "
+    "make no decision about any candidate. The 'Needs human review' column exists so "
+    "that a person reads the flagged rows: this is a tool for directing human review, "
+    "not a substitute for it. Any use must comply with the laws, regulations and "
+    "policies that apply to you; automated tools in hiring are regulated in many "
+    "jurisdictions. Consult your legal team before using this on real applicants."
 )
 
 # Column order for the spreadsheet and CSV. (header, key, width)

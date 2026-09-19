@@ -16,10 +16,12 @@ this folder carries its own `README.md` with the full detail: how it works,
 usage, output, cost and time, results, and its legal disclaimer. This page is
 only the index.
 
-> **Research proofs of concept.** Everything here was built to test whether a
-> methodology works. Where a skill touches a regulated area, such as hiring,
-> its README opens with the disclaimer; read it before using the skill on
-> anything real, and consult your own legal counsel first.
+> **Research proofs of concept.** Each was built to test whether a methodology
+> works, and each is a tool for directing human review, not a substitute for
+> it. Where a skill touches a regulated area such as hiring, its README opens
+> with the disclaimer: any use must comply with applicable laws, regulations
+> and policies, and you should consult your legal team before using it on
+> anything real.
 
 ## Skills
 

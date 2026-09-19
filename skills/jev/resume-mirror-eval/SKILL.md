@@ -23,22 +23,17 @@ metadata:
 
 # Resume Mirror Eval
 
-> **Research proof of concept. Read this before running it for anyone.**
+> **Research proof of concept.** This skill measures how closely a resume's
+> *wording* tracks a job description. It does not determine whether a person
+> used AI and it makes no decision about any candidate. Its output is a list of
+> resumes a human should read first; the **Needs human review** column exists
+> for exactly that purpose. It is a tool for directing human review, not a
+> substitute for it.
 >
-> This skill measures how closely a resume's *wording* tracks a job description.
-> It does not, and cannot, determine whether a person used AI, and a candidate
-> whose experience genuinely matches the role will score above the batch
-> average. The output is a "look here first" list for a human, not a ranking and
-> not a filter. Every row it flags says "a person should read this", not "this
-> is bad".
->
-> Automated tools in hiring are regulated in many places (EU AI Act, NYC Local
-> Law 144, Illinois AIVIA, Colorado SB 24-205, US EEOC guidance, among others).
-> Anyone using this on real applicants is responsible for complying with the
-> laws that apply to them, including notice, bias auditing and record-keeping
-> duties, and should consult their own legal counsel first. The author built
-> this to test whether the methodology works; it is offered for research and
-> education only.
+> Any use must comply with the laws, regulations and policies that apply to
+> the user and their applicants; automated tools in hiring are regulated in
+> many places, and the user should consult their legal team before running
+> this on real applicants. Provided as is, for research and education.
 >
 > Repeat the short form of this to the user at the end of every run.
 
@@ -193,9 +188,9 @@ Tell the user, in this order:
 3. Where the spreadsheet is (copy it to where the user wants it), what the
    first sheet's columns mean, briefly, and an offer to delete the staged copies
    of the resumes.
-4. The disclaimer, in two or three sentences: research proof of concept, wording
-   similarity is not evidence of AI use, real hiring use must comply with
-   applicable law and their own counsel's advice.
+4. The disclaimer, in two or three sentences: research proof of concept, it
+   directs human review rather than making a determination, and real use must
+   comply with applicable law and policy with their legal team's advice.
 
 ## Reading the output
 

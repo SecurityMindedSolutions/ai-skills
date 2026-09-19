@@ -30,7 +30,8 @@ SYSTEM_PROMPT = (
     "restated as experience, whether employers, dates, systems and numbers read as "
     "lived detail or as generic filler, or which claim to probe on a phone screen. "
     "Do not repeat the code evidence bullets. Never state or guess whether the "
-    "candidate used AI. After the bullets, add one final line that is exactly "
+    "candidate used AI, and never comment on whether the candidate is a good fit "
+    "for the role; only on the file's relationship to the posting. After the bullets, add one final line that is exactly "
     "'review: yes' if anything you saw deserves a human's eyes before this resume "
     "is ranked, otherwise exactly 'review: no'."
 )
@@ -49,9 +50,8 @@ ANTHROPIC_DEFAULT_MODEL = "claude-opus-5"
 
 def note_prompt(jd_text: str, resume_text: str, row: dict) -> str:
     scores = {k: row[k] for k in (
-        "mirror_score", "verdict", "fit_signal", "phrase_overlap",
-        "longest_span_words", "phrasing_mirror_raw", "concrete_specifics_raw",
-        "overall_read_choice") if k in row}
+        "mirror_score", "phrase_overlap", "longest_span_words",
+        "phrasing_mirror_raw", "concrete_specifics_raw") if k in row}
     return (f"JOB DESCRIPTION:\n{jd_text}\n\nRESUME ({row['file']}):\n{resume_text}"
             f"\n\nSCORES:\n{json.dumps(scores, indent=2)}"
             f"\n\nCODE EVIDENCE:\n{row.get('evidence') or '- none'}")
@@ -127,8 +127,7 @@ def write_agent_request(out_dir: Path, jd_text: str, texts: dict[str, str],
         "same --out folder.",
         "job_description": jd_text,
         "resumes": [{"file": row["file"], "scores": {k: row.get(k) for k in (
-            "mirror_score", "verdict", "fit_signal", "phrasing_mirror_raw",
-            "concrete_specifics_raw", "overall_read_choice")},
+            "mirror_score", "phrasing_mirror_raw", "concrete_specifics_raw")},
             "code_evidence": row.get("evidence", ""),
             "text": texts[row["file"]]} for row in rows],
     }

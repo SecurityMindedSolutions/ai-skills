@@ -26,9 +26,10 @@ The distinguishing features are not *which* words appear but *how*:
   candidate", "must have"). Resumes are written *by* one. Leaked posting
   register is a strong tell.
 
-So the method scores wording and specificity, and reports fit separately so
-the reader can see "strong fit, own words" and "strong fit, copied words" as
-different things.
+So the method scores wording and specificity only. It deliberately does not
+rate the candidate's fit or qualifications: coverage of the posting's keywords
+enters the score at a low weight as a mirroring signal, and nothing in the
+output grades the person.
 
 ## Layer 1: statistics in code
 
@@ -41,7 +42,7 @@ Everything that is a count or a ratio is computed here. All are 0..1.
 | `longest_span` | Longest run of consecutive shared words, capped at 12 | 0.20 | Humans top out around 4 ("soc 2 type ii"). The evidence bullet quotes the run so a reviewer can find it. |
 | `order_echo` | Spearman correlation between the order matched terms first appear in the JD and in the resume | 0.15 | Catches paraphrases that keep the posting's structure. Needs 8+ shared terms or it reports 0. |
 | `tfidf_cosine` | Cosine similarity of TF-IDF unigram+bigram vectors, IDF fit on this batch | 0.15 | Batch-relative: terms every resume shares (the stack) are down-weighted automatically. |
-| `keyword_coverage` | Share of JD content words present anywhere in the resume | 0.15 | This is *fit*, not fraud. Weighted low on purpose and also reported in the fit signal. |
+| `keyword_coverage` | Share of JD content words present anywhere in the resume | 0.15 | A genuine match covers keywords too, so this is weighted low on purpose. |
 
 Two more are computed for the evidence bullets and the sheet but not weighted:
 `verbatim_sentences` (JD sentences that appear with only case and punctuation
@@ -50,29 +51,27 @@ normalized to `SLO`, present in the resume).
 
 ## Layer 2: judgments from Jev
 
-One request per resume, state `{"job_description": ..., "resume": ...}`, seven
+One request per resume, state `{"job_description": ..., "resume": ...}`, six
 questions evaluated in parallel. Each names the state field it is about, states
 the condition literally, and puts boundary cases in the criteria, following the
 TypeSafe guidance on literal reading. Scores are 0..N-1 across ordered levels and
-are divided by N-1 here; Nouls are probabilities; the Choice contributes
-`P(generated_from_posting) + 0.5 * P(tailored_wording)`.
+are divided by N-1 here; Nouls are probabilities.
 
 | Question | Type | Weight | What it adds over the statistics |
 |---|---|---|---|
-| `phrasing_mirror` | Score, 4 levels | 0.35 | Catches reworded copies the 4-gram overlap misses. Mock paraphrase: 2.81/3 with `phrase_overlap` only 0.05. |
-| `requirement_echo` | Score, 4 levels | 0.10 | Coverage including niche items and order. Low weight: it is fit. Also feeds the fit signal. |
-| `concrete_specifics` | Score, 4 levels, inverted | 0.20 | Named employers, dates, systems, numbers, outcomes. Human mock resumes: 2.85-3.0. Generated ones: 0.7-1.0. |
-| `generic_template` | Noul | 0.10 | Interchangeable bullets. Correlates with specifics but asked separately, per the guidance not to hide two judgments in one question. |
-| `posting_language_leak` | Noul | 0.10 | "You will", "the ideal candidate". Near 0 for every human mock resume; 0.56-0.99 where the leak was planted. |
+| `phrasing_mirror` | Score, 4 levels | 0.40 | Catches reworded copies the 4-gram overlap misses. Mock paraphrase: 2.81/3 with `phrase_overlap` only 0.05. |
+| `requirement_echo` | Score, 4 levels | 0.10 | Coverage including niche items and posting order. Low weight because a genuine match covers requirements too. |
+| `concrete_specifics` | Score, 4 levels, inverted | 0.25 | Named employers, dates, systems, numbers, outcomes. Human mock resumes: 2.85-3.0. Generated ones: 0.7-1.0. |
+| `generic_template` | Noul | 0.125 | Interchangeable bullets. Correlates with specifics but asked separately, per the guidance not to hide two judgments in one question. |
+| `posting_language_leak` | Noul | 0.125 | "You will", "the ideal candidate". Near 0 for every human mock resume; 0.56-0.99 where the leak was planted. |
 | `career_consistency` | Noul | 0 (review flag only) | Claimed skills plausible for the listed roles. Not weighted into the score because a mismatch is a different problem from mirroring; it flags for review instead. |
-| `overall_read` | Choice, 4 options | 0.15 | A holistic read with a probability for each explanation. Reported with its confidence so a reader can see when Jev was torn (the polished generated resume: `tailored_wording` at 0.35). |
 
 ## Combining
 
-`mirror_score = 100 * (0.5 * lexical + 0.5 * semantic)`. Buckets: `high` >= 65,
-`moderate` >= 40, `low` below. A z-score against the batch is reported and a
-resume 1.5 standard deviations above the batch mean in a batch of five or more
-is marked a pool outlier.
+`mirror_score = 100 * (0.5 * lexical + 0.5 * semantic)`. There are no
+high/medium/low buckets; a single `REVIEW_SCORE` (40) feeds the review flag. A
+z-score against the batch is reported and a resume 1.5 standard deviations
+above the batch mean in a batch of five or more is marked a batch outlier.
 
 The equal split is deliberate. The lexical half is transparent and reproducible
 without any model; the semantic half catches what it misses. When the two
@@ -81,13 +80,13 @@ half saw.
 
 ## Needs human review
 
-TRUE when any of these fire: verdict `moderate` or `high`, pool outlier, any
-evidence bullet, `posting_language_leak` >= 0.5, `generic_template` >= 0.5,
+YES when any of these fire: mirror score at or above `REVIEW_SCORE`, batch
+outlier, any evidence bullet, `posting_language_leak` >= 0.5, `generic_template` >= 0.5,
 `career_consistency` < 0.5, or the notes ended in `review: yes`. It is generous
 on purpose. In the mock batch it flags a genuinely strong human match on
 acronym coverage alone, and that is fine: the reviewer reads it, sees a low
-mirror score, a `genuine_fit` read and a note saying the wording is the
-candidate's own, and moves on in thirty seconds. The column's job is to make
+mirror score and a note saying the wording is the candidate's own, and moves
+on in thirty seconds. The column's job is to make
 sure nobody sorts by score and stops reading.
 
 ## Results on the mock set
@@ -97,14 +96,14 @@ section, two off-target) and 5 generated in different styles.
 
 | Group | Mirror score range | Notes |
 |---|---|---|
-| Generated, verbatim | 68-70 | 7, 2 and 1 verbatim JD sentences; all JD acronyms present |
-| Generated, paraphrased | ~53 | Lexical half only 34; semantic half 73 carried it |
-| Generated, polished with metrics | ~49 | Specifics judge gave 2.99 on invented round numbers. Correctly lands in "moderate, needs review" rather than "high" |
-| Human, keyword-padded skills | ~25 | `tailored_wording` read at low confidence; not flagged |
-| Human, very close fit | 15-16 | Fit signal 52; `genuine_fit` read at 0.74-0.87 |
-| Human, moderate or weak fit | 3-14 | |
+| Generated, verbatim | 67-69 | 7, 2 and 1 verbatim JD sentences; all JD acronyms present |
+| Generated, paraphrased | ~52 | Lexical half only 34; the semantic half carried it |
+| Generated, polished with metrics | ~47 | Specifics judge gave 2.99 on invented round numbers. Still flagged for review; the notes carry the case |
+| Human, keyword-padded skills | ~25 | Not flagged |
+| Human, very close match | 14-16 | One flagged for review on acronym coverage alone |
+| Human, moderate or weak match | 3-14 | |
 
-Mean score: generated 62, human 12. Pairwise AUC 1.0, which says nothing
+Mean score: generated 60, human 12. Pairwise AUC 1.0, which says nothing
 beyond "the mock set is separable" and should not be quoted as a result. Real
 data will be messier: hybrid resumes (human history, model-polished bullets),
 candidates who tailor honestly and heavily, non-native English, and postings
@@ -120,8 +119,8 @@ trusting any bucket boundary.
 - **Generic postings.** If the JD is boilerplate, everyone's `phrase_overlap`
   rises and the batch z-score becomes the more useful column.
 - **Honest heavy tailoring.** Career coaches tell people to mirror the posting.
-  A human who does this diligently will score `moderate`. That is why the output
-  is a review list and not a decision.
+  A human who does this diligently will be flagged. That is why the output is a
+  review list and not a decision.
 - **Short or scanned PDFs.** Under 40 extracted words the file is reported as an
   error rather than scored. OCR is out of scope.
 - **Non-English.** Jev is English-first. The lexical half still works; treat
@@ -144,4 +143,4 @@ real data is available, or to build a labelled set:
   that posting, is a clean human baseline for a given role.
 
 Run with `--labels` to get mean score per label, precision and recall of the
-flagged bucket, and pairwise AUC.
+review flag, and pairwise AUC.

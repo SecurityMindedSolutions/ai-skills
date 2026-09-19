@@ -110,24 +110,6 @@ QUESTIONS = {
                      "candidate's own history.",
         },
     },
-    "overall_read": {
-        "type": "choice",
-        "instructions": (
-            "Which option best describes the relationship between `resume` and "
-            "`job_description`?"
-        ),
-        "criteria": {
-            "genuine_fit": "Experience matches the requirements and is described "
-                           "in the candidate's own words with specific detail.",
-            "tailored_wording": "Experience appears genuine but the wording has "
-                                "been adjusted to echo `job_description`.",
-            "generated_from_posting": "Content appears constructed from "
-                                      "`job_description` itself: requirements "
-                                      "restated as experience with little "
-                                      "independent detail.",
-            "weak_fit": "Experience does not match most of the requirements.",
-        },
-    },
 }
 
 # --------------------------------------------------------------------------
@@ -147,24 +129,21 @@ LONGEST_SPAN_CAP = 12            # a 12+ word verbatim run scores 1.0
 # Semantic signals from Jev. Scores are divided by their top level index so
 # each lands in 0..1. "Inverted" signals are subtracted from 1 before weighting.
 SEMANTIC_WEIGHTS = {
-    "phrasing_mirror": 0.35,
+    "phrasing_mirror": 0.40,
     "requirement_echo": 0.10,    # low weight on purpose, same reason as above
-    "concrete_specifics": 0.20,  # inverted: more specifics means less suspicion
-    "generic_template": 0.10,
-    "posting_language_leak": 0.10,
-    "overall_read": 0.15,        # P(generated_from_posting) + 0.5 * P(tailored_wording)
+    "concrete_specifics": 0.25,  # inverted: more specifics means less suspicion
+    "generic_template": 0.125,
+    "posting_language_leak": 0.125,
 }
 INVERTED_SIGNALS = {"concrete_specifics"}
 
 # How the two groups combine into the 0..100 mirror score.
 GROUP_WEIGHTS = {"lexical": 0.5, "semantic": 0.5}
 
-# Verdict buckets on the 0..100 mirror score.
-VERDICT_THRESHOLDS = [
-    (65, "high"),       # mirror_score >= 65
-    (40, "moderate"),   # 40 <= mirror_score < 65
-    (0, "low"),
-]
+# A mirror score at or above this marks the row for human review on its own.
+# There are deliberately no "high/medium/low" buckets: the tool reports how
+# closely a file tracks the posting, it does not grade the candidate.
+REVIEW_SCORE = 40
 
 # A resume this many standard deviations above the batch mean is marked as a
 # pool outlier regardless of bucket. Only meaningful with 5+ resumes.
@@ -174,7 +153,7 @@ POOL_MIN_SIZE = 5
 # "Needs human review" is true when ANY of these fire. It is deliberately
 # generous: the column exists so nobody sorts by score and stops reading.
 REVIEW_TRIGGERS = {
-    "verdict_not_low": True,           # mirror_score in the moderate or high bucket
+    "score": True,                     # mirror_score >= REVIEW_SCORE
     "pool_outlier": True,              # z-score past POOL_OUTLIER_Z in a batch of POOL_MIN_SIZE+
     "any_code_evidence": True,         # at least one evidence bullet from evidence.py
     "posting_language_leak": 0.5,      # Jev noul at or above this

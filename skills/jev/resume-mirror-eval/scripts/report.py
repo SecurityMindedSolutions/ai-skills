@@ -17,15 +17,22 @@ DISCLAIMER = (
     "jurisdictions. Consult your legal team before using this on real applicants."
 )
 
-# Column order for the spreadsheet and CSV. (header, key, width)
+# What a recruiter sees: the Results sheet and results.csv. (header, key, width)
+SIMPLE_COLUMNS = [
+    ("Needs human review", "needs_review", 12),
+    ("File", "file", 34),
+    ("Mirror score", "mirror_score", 12),
+    ("Evidence (code)", "evidence", 80),
+    ("LLM notes", "llm_notes", 80),
+]
+
+# Everything: the Details sheet and results-detail.csv.
 COLUMNS = [
     ("Needs human review", "needs_review", 12),
     ("File", "file", 34),
     ("Mirror score", "mirror_score", 12),
-    ("Verdict", "verdict", 10),
-    ("Pool z", "pool_z", 8),
-    ("Outlier", "pool_outlier", 8),
-    ("Fit signal", "fit_signal", 10),
+    ("Batch z", "pool_z", 8),
+    ("Batch outlier", "pool_outlier", 12),
     ("Lexical", "lexical_score", 9),
     ("Semantic", "semantic_score", 9),
     ("Phrase overlap", "phrase_overlap", 13),
@@ -39,8 +46,6 @@ COLUMNS = [
     ("Generic P", "generic_template", 9),
     ("Posting leak P", "posting_language_leak", 13),
     ("Career consistent P", "career_consistency", 17),
-    ("Overall read", "overall_read_choice", 22),
-    ("Read confidence", "overall_read_confidence", 14),
     ("Verbatim JD sentences", "verbatim_sentences", 19),
     ("Acronym cov", "acronym_coverage", 11),
     ("Words", "resume_words", 7),
@@ -49,12 +54,12 @@ COLUMNS = [
     ("Error", "error", 40),
 ]
 
-VERDICT_FILL = {"high": "F8CBAD", "moderate": "FFE699", "low": "C6E0B4"}
+REVIEW_FILL = "F8CBAD"
 
 
-def columns_for(extra: list[str]) -> list[tuple]:
-    """Base columns with any manifest columns (candidate ids, source links) after File."""
-    cols = list(COLUMNS)
+def columns_for(base: list[tuple], extra: list[str]) -> list[tuple]:
+    """Columns with any manifest columns (candidate ids, source links) after File."""
+    cols = list(base)
     for i, name in enumerate(extra):
         cols.insert(2 + i, (name.replace("_", " ").capitalize(), name, 24))
     return cols
@@ -62,13 +67,16 @@ def columns_for(extra: list[str]) -> list[tuple]:
 
 def write_all(out_dir: Path, rows: list[dict], summary: dict, jd_text: str,
               extra: list[str] | None = None) -> dict[str, Path]:
-    """Always writes JSON and CSV. Writes XLSX when openpyxl is importable."""
-    columns = columns_for(extra or [])
+    """Always writes JSON and the two CSVs. Writes XLSX when openpyxl is importable."""
+    simple = columns_for(SIMPLE_COLUMNS, extra or [])
+    detail = columns_for(COLUMNS, extra or [])
     out_dir.mkdir(parents=True, exist_ok=True)
-    paths = {"json": out_dir / "results.json", "csv": out_dir / "results.csv"}
+    paths = {"json": out_dir / "results.json", "csv": out_dir / "results.csv",
+             "detail_csv": out_dir / "results-detail.csv"}
     paths["json"].write_text(json.dumps(
         {"summary": summary, "disclaimer": DISCLAIMER, "results": rows}, indent=2))
-    _write_csv(paths["csv"], rows, columns)
+    _write_csv(paths["csv"], rows, simple)
+    _write_csv(paths["detail_csv"], rows, detail)
     try:
         import openpyxl  # noqa: F401 - probe only
     except ImportError:
@@ -76,7 +84,7 @@ def write_all(out_dir: Path, rows: list[dict], summary: dict, jd_text: str,
               file=sys.stderr)
         return paths
     paths["xlsx"] = out_dir / "results.xlsx"
-    _write_xlsx(paths["xlsx"], rows, summary, jd_text, columns)
+    _write_xlsx(paths["xlsx"], rows, summary, jd_text, simple, detail)
     return paths
 
 
@@ -85,42 +93,50 @@ def _write_csv(path: Path, rows: list[dict], columns: list[tuple]) -> None:
         writer = csv.writer(handle)
         writer.writerow(header for header, _, _ in columns)
         for row in rows:
-            writer.writerow(row.get(key, "") for _, key, _ in columns)
+            writer.writerow(_cell(row, key) for _, key, _ in columns)
 
 
-def _write_xlsx(path: Path, rows: list[dict], summary: dict, jd_text: str, columns: list[tuple]) -> None:
+def _cell(row: dict, key: str):
+    """Flags show as YES or blank; there is no 'no' to sort past."""
+    value = row.get(key, "")
+    if key in ("needs_review", "pool_outlier"):
+        return "YES" if value else ""
+    return value
+
+
+def _write_xlsx(path: Path, rows: list[dict], summary: dict, jd_text: str,
+                simple: list[tuple], detail: list[tuple]) -> None:
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Font
 
     book = Workbook()
-    sheet = book.active
-    sheet.title = "Results"
     bold = Font(bold=True)
-    for col, (header, _, width) in enumerate(columns, start=1):
-        cell = sheet.cell(row=1, column=col, value=header)
-        cell.font = bold
-        sheet.column_dimensions[get_column_letter(col)].width = width
-    for r, row in enumerate(rows, start=2):
-        for col, (_, key, _) in enumerate(columns, start=1):
-            cell = sheet.cell(row=r, column=col, value=row.get(key, ""))
-            if key in ("llm_notes", "evidence"):
-                cell.alignment = Alignment(wrap_text=True, vertical="top")
-        fill = VERDICT_FILL.get(row.get("verdict", ""))
-        if fill:
-            for key in ("mirror_score", "verdict"):
-                col = next(i for i, (_, k, _) in enumerate(columns, start=1) if k == key)
-                sheet.cell(row=r, column=col).fill = PatternFill("solid", fgColor=fill)
-        if row.get("needs_review"):
-            sheet.cell(row=r, column=1).fill = PatternFill("solid", fgColor=VERDICT_FILL["high"])
-            sheet.cell(row=r, column=1).font = bold
-    sheet.freeze_panes = "C2"
-    sheet.auto_filter.ref = sheet.dimensions
-
+    _results_sheet(book.active, "Results", rows, simple, bold)
+    _results_sheet(book.create_sheet("Details"), "Details", rows, detail, bold)
     _summary_sheet(book, summary, bold)
     _text_sheet(book, "Job description", jd_text)
     _text_sheet(book, "Read me", DISCLAIMER + "\n\n" + _column_guide())
     book.save(path)
+
+
+def _results_sheet(sheet, title: str, rows: list[dict], columns: list[tuple], bold) -> None:
+    from openpyxl.styles import Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    sheet.title = title
+    for col, (header, _, width) in enumerate(columns, start=1):
+        sheet.cell(row=1, column=col, value=header).font = bold
+        sheet.column_dimensions[get_column_letter(col)].width = width
+    for r, row in enumerate(rows, start=2):
+        for col, (_, key, _) in enumerate(columns, start=1):
+            cell = sheet.cell(row=r, column=col, value=_cell(row, key))
+            if key in ("llm_notes", "evidence"):
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+        if row.get("needs_review"):
+            sheet.cell(row=r, column=1).fill = PatternFill("solid", fgColor=REVIEW_FILL)
+            sheet.cell(row=r, column=1).font = bold
+    sheet.freeze_panes = "C2"
+    sheet.auto_filter.ref = sheet.dimensions
 
 
 def _summary_sheet(book, summary: dict, bold) -> None:
@@ -146,13 +162,12 @@ def _text_sheet(book, title: str, text: str) -> None:
 def _column_guide() -> str:
     return "\n".join([
         "Column guide",
-        "Needs human review: TRUE when any signal fired (score bucket, batch outlier, a code evidence bullet, a Jev flag, or the LLM's review flag). It means 'a person should look', not 'this is bad'. The column exists so nobody sorts by score alone.",
-        "Mirror score: 0-100 composite. Higher means the wording tracks the JD more closely.",
-        "Verdict: high / moderate / low bucket on the mirror score (thresholds in questions.py).",
-        "Pool z: how many standard deviations this resume sits above or below the batch mean.",
-        "Fit signal: how much of the JD the resume covers. Reported separately so 'strong fit, own words' is distinguishable from 'strong fit, copied words'.",
+        "Results sheet / results.csv: the five columns a reviewer needs. Details sheet / results-detail.csv: every statistic and Jev answer behind the score.",
+        "Needs human review: YES when any signal fired (mirror score at or above the review threshold, batch outlier, a code evidence bullet, a Jev flag, or the notes' review flag). Blank otherwise. It means 'a person should look at this file', not anything about the candidate.",
+        "Mirror score: 0-100 composite. Half from code statistics, half from Jev. Higher means the file's wording tracks the posting more closely. There are no high/medium/low grades on purpose.",
+        "Batch z: how many standard deviations this file sits above or below the batch mean. Batch outlier: YES past the threshold in questions.py.",
         "Lexical: code-computed text statistics (verbatim 4-gram overlap, longest shared span, JD-order echo, TF-IDF cosine, keyword coverage).",
-        "Semantic: TypeSafe Jev judgments (phrasing mirror, requirement echo, concrete specifics, generic template, posting-language leak, career consistency, overall read).",
-        "Evidence (code): deterministic bullets a reviewer can check against the two documents (verbatim JD sentences, shared word runs, acronym coverage, order echo). Not scored; computed from the same statistics as the lexical columns.",
+        "Semantic: TypeSafe Jev judgments (phrasing mirror, requirement echo, concrete specifics, generic template, posting-language leak, career consistency).",
+        "Evidence (code): deterministic bullets a reviewer can check against the two documents. Not scored.",
         "LLM notes: optional bullets from a generative model or the host agent. Anecdotal, not scored.",
     ])

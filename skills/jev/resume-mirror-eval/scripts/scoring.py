@@ -21,14 +21,6 @@ def semantic_signals(answers: dict) -> dict:
             out[f"{key}_confidence"] = round(answer["confidence"], 3)
         elif spec["type"] == "noul":
             out[key] = round(answer["noul"], 4)
-        elif spec["type"] == "choice":
-            probs = answer["probabilities"]
-            out[key] = round(probs.get("generated_from_posting", 0.0)
-                             + 0.5 * probs.get("tailored_wording", 0.0), 4)
-            out[f"{key}_choice"] = answer["choice"]
-            out[f"{key}_confidence"] = round(answer["confidence"], 3)
-            for option, p in probs.items():
-                out[f"p_{option}"] = round(p, 3)
     return out
 
 
@@ -53,26 +45,12 @@ def mirror_score(lexical: dict, semantic: dict) -> dict:
     }
 
 
-def verdict(score: float) -> str:
-    for threshold, label in q.VERDICT_THRESHOLDS:
-        if score >= threshold:
-            return label
-    return q.VERDICT_THRESHOLDS[-1][1]
-
-
-def fit_signal(lexical: dict, semantic: dict) -> float:
-    """How well the resume covers the JD, reported separately from suspicion so
-    a reader can tell 'strong fit, own words' from 'strong fit, copied words'."""
-    return round(100 * (0.5 * lexical["keyword_coverage"]
-                        + 0.5 * semantic["requirement_echo"]), 1)
-
-
 def review_reasons(row: dict) -> list[str]:
     """Short reason codes for the 'Needs human review' column, from REVIEW_TRIGGERS."""
     t = q.REVIEW_TRIGGERS
     reasons = []
-    if t["verdict_not_low"] and row.get("verdict") in ("moderate", "high"):
-        reasons.append(f"{row['verdict']} mirror score")
+    if t["score"] and row.get("mirror_score", 0) >= q.REVIEW_SCORE:
+        reasons.append(f"mirror score {row['mirror_score']} (threshold {q.REVIEW_SCORE})")
     if t["pool_outlier"] and row.get("pool_outlier"):
         reasons.append("batch outlier")
     if t["any_code_evidence"] and row.get("evidence"):

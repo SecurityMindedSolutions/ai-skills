@@ -14,13 +14,13 @@ resemblance to a real person or employer is coincidental.
 
 | Label | Count | How it was written |
 |---|---|---|
-| `human` | 8 | Written as a person would: own phrasing, specific employers, dates and numbers. Fit to the posting ranges from strong (two are deliberately very close matches) to weak (a frontend developer and a data analyst). One is a human who padded a skills section with posting keywords. |
+| `human` | 8 | Written as a person would: own phrasing, specific employers, dates and numbers. Resemblance to the posting ranges from very close (two are deliberately written by people who have the whole stack) to none (a frontend developer and a data analyst). One is a human who padded a skills section with posting keywords. |
 | `ai_tailored` | 5 | Written the way a generative tool produces a resume from a posting: requirements restated as experience, posting order preserved, generic or absent specifics, and in one case posting language ("the ideal candidate") left in. |
 
 The two very close human matches (`dana_whitfield`, `marcus_chen`) are the point
-of the exercise. A candidate who genuinely has the stack will cover the
-requirements. The methodology has to score them lower than the generated ones
-on wording and specificity while still reporting their fit as high.
+of the exercise. A person who genuinely has the stack will mention everything
+the posting asks for. The methodology has to score them lower than the
+generated ones on wording and specificity anyway.
 
 ## Scoring a run
 
@@ -29,4 +29,4 @@ python3 ../scripts/analyze.py --jd job-description.md --resumes resumes --labels
 ```
 
 The summary line reports mean score per label, precision and recall of the
-"flagged" (high or moderate) bucket, and a pairwise AUC.
+review flag, and a pairwise AUC.

@@ -45,16 +45,19 @@ metadata:
    JD, longest shared word run, whether matched terms appear in the JD's order,
    TF-IDF cosine within the batch, keyword and acronym coverage, and a z-score
    against the rest of the batch.
-3. Sends `{job_description, resume}` to TypeSafe's Jev with seven typed
+3. Sends `{job_description, resume}` to TypeSafe's Jev with six typed
    questions in one request per resume (phrasing mirror, requirement echo,
    concrete specifics, generic template, posting-language leak, career
-   consistency, overall read). Roughly 2,000 tokens and a tenth of a cent per
-   resume; a batch of 100 finishes in seconds.
-4. Combines both into a 0-100 **mirror score**, a **fit signal** reported
-   separately, a verdict bucket, plain-language **evidence bullets** a reviewer
-   can check against the two documents, and a **Needs human review** flag.
-5. Writes `results.xlsx` (plus `.csv` and `.json`) sorted by mirror score, with
-   the review flag as the first column and the disclaimer on its own sheet.
+   consistency). Roughly 2,000 tokens and a tenth of a cent per resume; a batch
+   of 100 finishes in seconds.
+4. Combines both into a 0-100 **mirror score**, plain-language **evidence
+   bullets** a reviewer can check against the two documents, and a **Needs
+   human review** flag. Nothing in the output rates the candidate's fit or
+   qualifications; the tool judges the file's relationship to the posting only.
+5. Writes `results.xlsx` sorted by mirror score: a five-column Results sheet
+   (review flag, file, score, evidence, notes), a Details sheet with every
+   statistic and Jev answer, the JD, and the disclaimer. Also `results.csv`,
+   `results-detail.csv` and `results.json`.
 6. Optionally adds terse LLM notes per flagged resume, written by you (the
    agent running this skill) or by an API model.
 
@@ -139,8 +142,8 @@ labels.csv` (score the run against known `human` / `ai_tailored` labels, for
 evaluation), `--workers N` (parallel Jev calls, default 4), `--model`
 (TypeSafe model, default `jev-latest`), `--no-color`.
 
-The run prints a table (review flag, file, mirror score, fit, z, verdict,
-overall read) and the output paths. Read `results.json` if you need any field
+The run prints a table (review flag, file, mirror score, batch z, first
+evidence bullet) and the output paths. Read `results.json` if you need any field
 the table does not show.
 
 ### 4. Write the review notes (agent mode)
@@ -179,12 +182,12 @@ optional `OPENAI_BASE_URL` for OpenRouter, Ollama or any compatible endpoint).
 
 Tell the user, in this order:
 
-1. How many resumes, how many need human review, the verdict counts, and the
-   Jev cost line.
-2. The flagged rows with their mirror score, fit signal and one or two of the
-   strongest evidence bullets each. Point out any row flagged with a low score
-   (usually acronym coverage on a genuinely strong match) so they know the flag
-   is a prompt to read, not an accusation.
+1. How many resumes, how many need human review, and the Jev cost line.
+2. The flagged rows with their mirror score and one or two of the strongest
+   evidence bullets each. Point out any row flagged with a low score (usually
+   acronym coverage on a resume written in the candidate's own words) so they
+   know the flag is a prompt to read, not an accusation. Never comment on
+   whether a candidate seems qualified or a good fit.
 3. Where the spreadsheet is (copy it to where the user wants it), what the
    first sheet's columns mean, briefly, and an offer to delete the staged copies
    of the resumes.
@@ -196,15 +199,14 @@ Tell the user, in this order:
 
 | Column | Meaning |
 |---|---|
-| Needs human review | TRUE if any signal fired: moderate/high verdict, batch outlier, a code evidence bullet, a Jev flag (posting language, generic text, career inconsistency) or the notes' `review: yes`. Generous on purpose. |
-| Mirror score | 0-100. Half from code statistics, half from Jev. Higher means wording tracks the posting more closely. |
-| Verdict | `high` >= 65, `moderate` >= 40, else `low`. Thresholds in `questions.py`. |
-| Fit signal | How much of the JD the resume covers. Kept separate so "strong fit, own words" (low mirror, high fit) is visibly different from "strong fit, copied words" (high mirror, high fit). |
+| Needs human review | YES if any signal fired: mirror score at or above `REVIEW_SCORE` (40), batch outlier, a code evidence bullet, a Jev flag (posting language, generic text, career inconsistency) or the notes' `review: yes`. Blank otherwise. Generous on purpose. |
+| Mirror score | 0-100. Half from code statistics, half from Jev. Higher means the file's wording tracks the posting more closely. No high/medium/low buckets: the tool does not grade candidates. |
 | Evidence (code) | Deterministic bullets: verbatim JD sentences with a quote, longest shared run with the text, acronym coverage, phrase reuse percentage, order echo, thin specifics. |
 | LLM notes | The bullets from step 4. Anecdotal, not scored. |
 
-Individual Jev answers (0-3 scores, probabilities, the overall-read choice and
-its confidence) are in their own columns for anyone who wants to re-weight.
+The Details sheet and `results-detail.csv` hold every statistic and Jev answer
+(0-3 scores and probabilities) plus batch z-score, for anyone who wants to
+re-weight.
 
 ## Mock data
 

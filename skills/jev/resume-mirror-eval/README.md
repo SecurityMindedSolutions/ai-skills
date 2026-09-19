@@ -65,13 +65,13 @@ The cost is small: about a cent per hundred resumes, detailed under
 
 | Needs human review | File | Mirror score (Jev) | Text match analysis (code) | AI analysis (agent) |
 |---|---|---|---|---|
-| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | The qualifications section repeats the posting's requirements list word for word, so it tells you what the posting asked for, not what this... |
-| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The opening "Mission" paragraph is the posting's own description of the role reworded into the first person, so the candidate's stated goal... |
-| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | The nine duties listed in the posting appear as the nine bullets of the current job, in the same order and nearly the same words, which is w... |
-| **YES** | `jordan_harris.md` | 70 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | Each posting duty appears as a resume bullet with one word swapped ("Design, build and operate" becomes "Architected and operated") in the s... |
-| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | The bullets follow the posting's order and wording with a percentage added to each, so the results look measured but the underlying claims a... |
+| **YES** | `soojin_kim.md` | 89 | 1 posting sentence appears verbatim, e.g. "Expert-level Terraform skills and a s... | The resume's "Key Qualifications" section copies the JD's "What we are looking for" list word for word, so it tells you what the posting asked for, no... |
+| **YES** | `petr_ivanov.md` | 82 | 2 posting sentences appear verbatim, e.g. "Strong understanding of observability... | The resume's opening "Mission" paragraph is the JD's "About the role" paragraph reworded into the first person, so the candidate's stated goal is the... |
+| **YES** | `linh_nguyen.md` | 80 | 7 posting sentences appear verbatim, e.g. "Build and maintain CI/CD pipelines in... | The resume's current-job bullets copy the JD's "What you will do" list: all nine duties, in the JD's order, in nearly the JD's words, which is what yo... |
+| **YES** | `jordan_harris.md` | 70 | Longest shared word run is 8 words: "soc 2 type ii and pci dss compliance" | The resume's current-job bullets restate the JD's "What you will do" list with one word swapped per bullet (the JD's "Design, build and operate" becom... |
+| **YES** | `arjun_singh.md` | 48 | Longest shared word run is 12 words: "secrets and identity using hashicorp vault... | The resume's current-job bullets follow the JD's "What you will do" list in order and wording, with a percentage added to the end of each, so the resu... |
 |  | `tyler_brooks.md` | 33 |  |  |
-| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only because most of the posting's acronyms appear, which is expected for someone who has this stack; the wording is the candidate's... |
+| **YES** | `marcus_chen.docx` | 15 | 8 of 9 posting acronyms present (89%) | Flagged only because most of the JD's acronyms appear in the resume, which is expected for someone who has this stack; the resume's wording is its own... |
 |  | `dana_whitfield.md` | 15 |  |  |
 |  | `hanna_mueller.md` | 12 |  |  |
 |  | `ngozi_okafor.md` | 9 |  |  |
@@ -173,9 +173,9 @@ Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 - 15% of posting 4-word phrases reused verbatim
 AI analysis (agent):
-- The bullets follow the posting's order and wording with a percentage added to each, so the results look measured but the underlying claims are still the posting's
-- Every percentage is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%, which is what invented metrics tend to look like
-- Employers and dates look real, but no number is tied to a specific system, incident or time period, so the specifics may be decoration rather than evidence
+- The resume's current-job bullets follow the JD's "What you will do" list in order and wording, with a percentage added to the end of each, so the results look measured but the underlying claims are still the posting's
+- Every percentage in the resume is a round number (80%, 60%, 50%, 40%, 90%, 100%, 300%) and every uptime figure is 99.99%, which is what invented metrics tend to look like
+- The resume's employers and dates look real, but no number is tied to a specific system, incident or time period, so the specifics may be decoration rather than evidence
 - Phone screen: pick two of the percentages and ask how they were measured; real ones come with a story, invented ones do not
 ```
 
@@ -187,9 +187,9 @@ marcus_chen.docx   mirror score 15
 Text match analysis (code):
 - 8 of 9 posting acronyms present (89%)
 AI analysis (agent):
-- Flagged only because most of the posting's acronyms appear, which is expected for someone who has this stack; the wording is the candidate's own and names tools the posting never mentions
-- The detail is specific enough to check (14 AWS accounts, about $2B in payment volume, a 31% cost cut with the steps that got there), which is the opposite of what a resume written from a posting looks like
-- Nothing suggests the wording came from the posting
+- Flagged only because most of the JD's acronyms appear in the resume, which is expected for someone who has this stack; the resume's wording is its own and names tools the JD never mentions
+- The resume's detail is specific enough to check (14 AWS accounts, about $2B in payment volume, a 31% cost cut with the steps that got there), which is the opposite of what a resume written from a posting looks like
+- Nothing suggests the resume's wording came from the JD
 ```
 
 ## How to install and use it

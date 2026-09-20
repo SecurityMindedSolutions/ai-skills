@@ -1,0 +1,28 @@
+# Path traversal: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "path_traversal"
+title = "Path traversal"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` opens, reads, writes or serves a file whose path is built from an outside value without confining it to an intended directory."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["path_from_input"]
+none = []
+
+[questions.path_from_input]
+instructions = """Does `unit.code` build a file system path, object-storage key or served-file location from a value that comes from outside (request, upload name, message field) without confining the result to an intended directory or matching it against an allowlist?"""
+true = """An outside value is joined into a path or key and the code does not normalize and check the prefix, does not restrict it to a safe character set, and does not replace it with a generated name."""
+false = """Paths and keys are constants, generated identifiers, or the outside value is validated or normalized and checked before use, or the unit touches no files or objects."""
+
+[signals.file_path_build]
+label = "file path build"
+patterns = [
+    '''open\([^)]*(\+|f["']|\.format|%)|os\.path\.join\([^)]*(request|req\b|param|input|name|filename|args)|Path\([^)]*(request|req\b|param|input|filename)|readFile\w*\([^)]*(req\b|param|query|body)|sendFile\(|send_file\(|send_from_directory\(''',  # file path built from a value
+    '''\.\./|path\.normalize|secure_filename|os\.path\.basename''',  # path handling
+]

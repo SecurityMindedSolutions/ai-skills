@@ -1,0 +1,29 @@
+# Cross-site request forgery: one rule of the code audit.
+
+id = "csrf"
+title = "Cross-site request forgery"
+
+class = """`unit.code` changes state (writes, deletes, sends, pays, changes a setting) in a way a cross-site request could trigger: the change is done on a GET, or the route is cookie-authenticated and neither the unit nor the framework described in `app` checks an Origin/Referer header, a CSRF token or a SameSite policy."""
+
+[vector]
+# Gated on the shared "is this a request handler" question (declared in
+# missing_authorization.toml): a helper called by other code is not a route.
+all = ["state_change_reachable_cross_site", "handles_external_request"]
+none = []
+
+[questions.state_change_reachable_cross_site]
+instructions = """Does `unit.code` perform a state change (create, update, delete, send, purchase, change a setting, mint a session) that a request from another website could trigger in a signed-in user's browser: the change happens on a GET or on a link a browser follows, or the route relies on a session cookie and no CSRF token, Origin/Referer check or framework-level CSRF gate (per `file.guard_markers` or `app`) protects it?"""
+true = """A state change runs on a GET / link click, or on a cookie-authenticated mutation with no visible CSRF token, Origin or Referer check and no framework gate described in `app`."""
+false = """The unit changes no state, or the mutation is protected by a CSRF token, an Origin/Referer check, a framework CSRF gate that `app` says covers every mutating route, a bearer token that browsers do not send automatically, or a required JSON body on a route that browsers cannot submit cross-site as a form."""
+
+[signals.mutation_on_get]
+label = "state change inside a GET route"
+patterns = [
+    '''(?s)(methods\s*=\s*\[?\s*["']GET["']|@\w+\.get\(|router\.get\(|method\s*=\s*["']GET["']).{0,400}(\.set\(|\.update\(|\.delete\(|\.add\(|\.save\(|commit\(|send_|INSERT|UPDATE|DELETE)''',
+]
+
+[signals.csrf_control]
+label = "CSRF control present"
+patterns = [
+    '''csrf|CSRF|SameSite|X-Requested-With|Origin\b.{0,40}(check|verify|allow)|Referer\b.{0,40}(check|verify|allow)''',
+]

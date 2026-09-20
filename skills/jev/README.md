@@ -9,7 +9,8 @@ to Jev with a fixed set of questions, and code combines the answers under
 weights a reviewer can read in one file. They need a TypeSafe API key
 (`TYPESAFE_API_KEY` or `~/.config/typesafe/env`) and a plain Python 3.10+
 install; each script bootstraps its own private environment for its few
-pure-Python dependencies on first run, so nothing is installed by hand.
+pure-Python dependencies on first run, so nothing is installed by hand
+(`code-audit-jev` is stdlib-only and also runs as a GitHub Action).
 
 Because they are more involved than the rest of the repository, each skill in
 this folder carries its own `README.md` with the full detail: how it works,
@@ -22,7 +23,8 @@ only the index.
 > legal team's advice; the injection skill is a signal for a gate, to be
 > evaluated on your own traffic and run in alert mode before block mode; the
 > traffic skill is a triage signal, not an incident finding, to be verified
-> against the raw log before acting.
+> against the raw log before acting; the code audit skill produces candidates
+> for a person or agent to trace, not confirmed vulnerabilities.
 
 ## Skills
 
@@ -31,6 +33,7 @@ only the index.
 | `resume-mirror-eval` | Scores a batch of resumes against a job description for how closely their wording mirrors the posting, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets and optional review notes. About a cent and ten seconds per hundred resumes. | [README](resume-mirror-eval/README.md) |
 | `prompt-injection-eval` | Scores prompts for injection before they reach your LLM and returns allow / review / block with a risk score and reasons; a reference gate a backend can call, plus an evaluator that measures Jev against a regex list and an LLM judge on labelled prompts. About 300 ms and 7 cents per thousand prompts. | [README](prompt-injection-eval/README.md) |
 | `traffic-triage-eval` | Triages edge-log traffic (GCP LB, AWS ALB / WAF, CloudFront, nginx) per client IP as benign user, benign bot, AI agent, background scanning or malicious, with a 0-100 threat score, the signals and the paths, and carves out the raw rows of anything worth a look, from a documented JSON event schema the agent fills from any log source. About 340 ms and 15 cents per thousand IPs. | [README](traffic-triage-eval/README.md) |
+| `code-audit-jev` | Unit-level security judgment of a repository, a folder of repositories, or the units a pull request changed: every function, Terraform block, CI job and Dockerfile judged against 22 rule files (injection, missing authorization, IDOR, secrets, SSRF, CSRF, XXE, mass assignment, session handling, supply chain and more) with a 0-100 score, SARIF for the Security tab, and a composite GitHub Action. About a cent per PR, about a dollar per 300k lines. | [README](code-audit-jev/README.md) |
 
 ## Install
 
@@ -41,11 +44,13 @@ mkdir -p ~/.claude/skills
 cp -R ai-skills/skills/jev/resume-mirror-eval ~/.claude/skills/
 cp -R ai-skills/skills/jev/prompt-injection-eval ~/.claude/skills/
 cp -R ai-skills/skills/jev/traffic-triage-eval ~/.claude/skills/
+cp -R ai-skills/skills/jev/code-audit-jev ~/.claude/skills/
 
 # Codex, Cursor, Cline and other Agent Skills hosts
 npx skills add SecurityMindedSolutions/ai-skills --skill resume-mirror-eval
 npx skills add SecurityMindedSolutions/ai-skills --skill prompt-injection-eval
 npx skills add SecurityMindedSolutions/ai-skills --skill traffic-triage-eval
+npx skills add SecurityMindedSolutions/ai-skills --skill code-audit-jev
 ```
 
 Paths inside each skill are relative to its own folder, so the same copy works

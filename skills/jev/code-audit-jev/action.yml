@@ -1,0 +1,118 @@
+# code-audit-jev as a composite GitHub Action.
+#
+#   - uses: SecurityMindedSolutions/ai-skills/skills/jev/code-audit-jev@<commit sha>
+#     with:
+#       typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
+#       app: .jev/app.md            # one paragraph about the system (see README)
+#       rules: .jev/rules           # optional: your own rule files
+#
+# On a pull_request event it judges only the units the PR changed, on both
+# sides of the merge base, and reports the ones whose risk band rose. On any
+# other event it judges the whole tree. Results go to the step summary and to
+# `sarif-file`, which the caller uploads with github/codeql-action/upload-sarif
+# (that step needs `security-events: write` and `actions: read`).
+#
+# Needs: python3 (3.11+, on every hosted runner) and a checkout with
+# `fetch-depth: 0` so the merge base exists. No installs. Alert mode: the step
+# exits 0 on findings and non-zero only when the API refuses (no credits, bad
+# key), so a red check means the tool, not the code.
+
+name: code-audit-jev
+description: Unit-level security judgment of changed code with TypeSafe Jev, as candidates for a person to trace
+author: SecurityMindedSolutions
+
+inputs:
+  typesafe-api-key:
+    description: TypeSafe API key (store it as a secret). Empty skips the run with a notice.
+    required: false
+    default: ''
+  app:
+    description: Path to a file with one paragraph describing the system (auth model, tenant model, trusted inputs, intentionally public things)
+    required: false
+    default: ''
+  rules:
+    description: Extra rules directory; a file whose id matches a built-in rule replaces it
+    required: false
+    default: ''
+  base-ref:
+    description: Base ref for diff mode; defaults to the PR base branch
+    required: false
+    default: ''
+  exclude:
+    description: Space-separated path prefixes to skip (vendored trees, archives)
+    required: false
+    default: ''
+  mode:
+    description: '"diff" (changed units only, default on pull_request), "full" (whole tree), or "auto"'
+    required: false
+    default: 'auto'
+  sarif-file:
+    description: Where to write the SARIF file
+    required: false
+    default: 'code-audit-jev.sarif'
+  workers:
+    description: Parallel Jev requests
+    required: false
+    default: '8'
+
+outputs:
+  ran:
+    description: '"true" when Jev was called'
+    value: ${{ steps.judge.outputs.ran }}
+  rose:
+    description: Number of units whose band rose (diff mode) or attention units (full mode)
+    value: ${{ steps.judge.outputs.rose }}
+  sarif-file:
+    description: Path of the SARIF file written
+    value: ${{ steps.judge.outputs.sarif }}
+
+runs:
+  using: composite
+  steps:
+    - id: judge
+      shell: bash
+      env:
+        TYPESAFE_API_KEY: ${{ inputs.typesafe-api-key }}
+        CODE_AUDIT_JEV_NO_XLSX: '1'
+        ACTION_PATH: ${{ github.action_path }}
+        IN_APP: ${{ inputs.app }}
+        IN_RULES: ${{ inputs.rules }}
+        IN_BASE: ${{ inputs.base-ref }}
+        IN_EXCLUDE: ${{ inputs.exclude }}
+        IN_MODE: ${{ inputs.mode }}
+        IN_SARIF: ${{ inputs.sarif-file }}
+        IN_WORKERS: ${{ inputs.workers }}
+        EVENT_NAME: ${{ github.event_name }}
+        PR_BASE: ${{ github.base_ref }}
+      run: |
+        set -eu
+        if [ -z "${TYPESAFE_API_KEY:-}" ]; then
+          echo "::notice title=code-audit-jev skipped::no TypeSafe API key available to this run"
+          printf '## code-audit-jev: skipped\n\nNo TypeSafe API key available to this run.\n' >> "$GITHUB_STEP_SUMMARY"
+          echo "ran=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        out="$RUNNER_TEMP/code-audit-jev"
+        mkdir -p "$out"
+        args=(--target . --out "$out" --sarif "$IN_SARIF" --summary "$out/summary.md" --workers "$IN_WORKERS" --no-color)
+        [ -n "$IN_APP" ] && args+=(--app "$IN_APP")
+        [ -n "$IN_RULES" ] && args+=(--rules "$IN_RULES")
+        for p in $IN_EXCLUDE; do args+=(--exclude "$p"); done
+        mode="$IN_MODE"
+        if [ "$mode" = "auto" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ] || [ "$EVENT_NAME" = "pull_request_target" ]; then mode=diff; else mode=full; fi
+        fi
+        if [ "$mode" = "diff" ]; then
+          base="${IN_BASE:-origin/${PR_BASE:-main}}"
+          args+=(--diff "$base")
+        fi
+        python3 "$ACTION_PATH/scripts/run.py" "${args[@]}"
+        if [ -f "$out/summary.md" ]; then
+          cat "$out/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        else
+          printf '## code-audit-jev: whole tree\n\nSee %s for the candidate list.\n' "$IN_SARIF" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        rose=$(python3 -c "import json,sys; s=json.load(open('$out/results.json'))['summary']; print(s.get('rose', s.get('attention_units', 0)))")
+        echo "ran=true" >> "$GITHUB_OUTPUT"
+        echo "rose=$rose" >> "$GITHUB_OUTPUT"
+        echo "sarif=$IN_SARIF" >> "$GITHUB_OUTPUT"

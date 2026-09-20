@@ -1,0 +1,26 @@
+# Insecure direct object reference: one rule of the code audit. The
+# single-tenant form of tenant_isolation: an object fetched or changed by a
+# caller-supplied id with no check that the caller may access it.
+
+id = "idor"
+title = "Insecure direct object reference"
+
+class = """`unit.code` reads, changes or deletes a record, file or resource identified by an id, key or name the caller supplied, and nothing in the unit or in the framework described in `app` checks that the caller owns it or is allowed to reach it; any signed-in user can act on any other user's object by changing the id."""
+
+[vector]
+# Gated on the shared "is this a request handler" question (declared in
+# missing_authorization.toml): an id passed to a helper by other code is not
+# caller-supplied at this unit.
+all = ["object_by_caller_id_unchecked", "handles_external_request"]
+none = []
+
+[questions.object_by_caller_id_unchecked]
+instructions = """Does `unit.code` load, change, download or delete a specific object (a record, document, file, order, message) using an id, key, slug or filename the caller supplied, without a check that the caller is allowed to access that particular object (an ownership comparison, a query scoped to the caller's own id or organisation, a permission lookup for that object, or a framework gate that `app` says performs it)? Ids that are unguessable random tokens the caller could only know by being entitled do not count."""
+true = """An object is fetched or acted on by a caller-supplied identifier and no per-object authorization is visible in `unit.code` or described in `app`."""
+false = """The access is scoped to the caller (owner id, organisation, membership check), the object is looked up by an unguessable token, the object is public by design, `app` says a framework gate performs the check, or the unit accesses no object by a caller-supplied id."""
+
+[signals.lookup_by_param_id]
+label = "object loaded by a caller-supplied id"
+patterns = [
+    '''\.document\(\s*(doc_?id|id|item_id|record_id|params\[|request\.|req\.)|\.get\(\s*(id|doc_?id|pk|record_id)\s*\)|filter_by\(\s*id\s*=|\.find_by_id\(|findById\(|findOne\(\s*\{\s*_?id|WHERE\s+id\s*=\s*[%?:]|/\{(id|doc_id|document_id|file_id|order_id|user_id)\}|params\[["'](id|doc_id|document_id|file_id|order_id|user_id)["']\]''',
+]

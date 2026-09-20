@@ -1,0 +1,27 @@
+# Open redirect: one rule of the code audit. Copy this file to add a rule.
+
+id = "open_redirect"
+title = "Open redirect"
+
+class = """`unit.code` sends the browser or client to a location that an outside value can set to another site: a redirect, `Location` header, `window.location` assignment or navigation whose target comes from a request parameter, form field or stored user value without an allowlist or a same-origin check."""
+
+[vector]
+all = ["redirect_target_from_input"]
+none = []
+
+[questions.redirect_target_from_input]
+instructions = """Does `unit.code` redirect or navigate (a redirect() call, a Location header, window.location / location.href / location.replace / router push, a `next` / `return_to` / `continue` style parameter) to a target that comes from outside the system, without confining it to a relative path or an allowlist of hosts?"""
+true = """A redirect or navigation target is taken from a request parameter, header, form field or stored user value and is not checked to be a same-origin relative path or a member of an allowlist; a check that only tests for a leading '/' still allows '//evil.example' and counts as true."""
+false = """Targets are constants or route names, or the outside value is validated (rejects '//', a scheme, '@' and backslashes and requires a single leading '/', or matches an allowlist of hosts), or the unit performs no redirect or navigation."""
+
+[signals.redirect_sink]
+label = "redirect / navigation with a value"
+patterns = [
+    '''redirect\([^)"']*[a-z_]|res\.redirect\(|window\.location(\.href)?\s*=|location\.replace\(|location\.assign\(|router\.(push|replace)\(|navigate\(|Location["']?\s*[:=]''',
+]
+
+[signals.return_param]
+label = "return / next parameter read"
+patterns = [
+    '''(?i)\b(next|return_?to|returnUrl|redirect_?uri|redirect_?url|continue|callback|goto|target|dest)\b\s*[=:)\]]''',
+]

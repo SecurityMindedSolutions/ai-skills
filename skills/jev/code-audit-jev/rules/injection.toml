@@ -1,0 +1,42 @@
+# Injection: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "injection"
+title = "Injection"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """A value that comes from outside (request, message, file name, stored user content) is placed into a query, command, template, expression or format string that is then executed, without parameterization or validation in `unit.code`."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["untrusted_reaches_sink"]
+none = []
+
+[questions.untrusted_reaches_sink]
+instructions = """In `unit.code`, does a value that arrives from outside the system (a request field, header, cookie, path segment, uploaded file name, queue message, webhook payload, or a record a user wrote earlier) reach a query, shell command, template, file path, outbound URL, HTML output, deserializer or redirect without being validated, parameterized, escaped or allowlisted first in `unit.code`?"""
+true = """An outside value flows to such an operation and no validation, parameter binding, escaping or allowlist is applied to it in `unit.code`."""
+false = """No outside value reaches such an operation, or the value is validated, bound as a parameter, escaped or matched against an allowlist before it does, or the value is environment configuration, a constant, or an identifier the system generated. Rendering a value as JSX text (`{value}` inside an element), as a template variable in an autoescaping engine (Jinja2, Django, Handlebars), or as a JSON response field is escaped by the framework and is not a sink; only raw-HTML bypasses (innerHTML, dangerouslySetInnerHTML, v-html, mark_safe, autoescape off) count as an HTML sink."""
+
+[signals.sql_string_build]
+label = "sql string build"
+patterns = [
+    '''(execute|executemany|raw|query|cursor\.\w+)\s*\(\s*(f["']|["'].*%\s*\(|.*\.format\(|.*\+\s*\w)''',  # SQL built by string formatting
+    '''f["'][^"']*\b(SELECT|INSERT|UPDATE|DELETE|WHERE)\b''',  # f-string containing SQL
+    '''\$\{[^}]+\}[^`]*\b(SELECT|INSERT|UPDATE|DELETE|WHERE)\b|\b(SELECT|INSERT|UPDATE|DELETE)\b[^`]*\$\{''',  # template literal containing SQL
+]
+
+[signals.command_exec]
+label = "command exec"
+patterns = [
+    '''\bos\.system\(|\bos\.popen\(|subprocess\.\w+\([^)]*shell\s*=\s*True|\bexecSync\(|\bexec\(|\bspawn\([^)]*shell\s*:\s*true|child_process''',  # shell / command execution
+    '''\beval\(|\bnew Function\(|\bexec\(\s*[a-z_]''',  # eval / dynamic code
+]
+
+[signals.template_render]
+label = "template compiled from a string"
+patterns = [
+    '''Template\([^)]*\)\.render|jinja2\.Template\(|from_string\(|render_template_string\(|Handlebars\.compile\(|ejs\.render\(''',  # template compiled from a string
+]

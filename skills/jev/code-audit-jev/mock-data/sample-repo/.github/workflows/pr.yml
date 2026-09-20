@@ -1,0 +1,15 @@
+# VULN supply_chain: pull_request_target with checkout of the PR head, unpinned actions, and an injected title
+name: pr
+on:
+  pull_request_target:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "Testing ${{ github.event.pull_request.title }}"
+      - run: curl -sSL https://get.acme.example/install.sh | bash
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

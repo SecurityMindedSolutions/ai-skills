@@ -1,0 +1,57 @@
+# Insecure configuration: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "insecure_configuration"
+title = "Insecure configuration"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """An infrastructure, deployment, CI or container setting in `unit.code` leaves a resource publicly reachable, grants a broad or wildcard privilege, disables encryption, logging or TLS, or runs a container as root or privileged."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["insecure_infra_setting"]
+none = []
+
+[questions.insecure_infra_setting]
+instructions = """For an infrastructure, deployment, CI or container definition in `unit.code`: does it make a resource reachable from the public internet that should not be, grant a wildcard or administrative privilege, disable encryption at rest or in transit, allow TLS below 1.2, disable audit logging, run a container as root or privileged, or leave state files or secrets unprotected?"""
+true = """At least one such setting is present in `unit.code` (a 0.0.0.0/0 ingress, allUsers or public ACL, an owner / editor / *.admin role or '*' action on a broad scope, encryption or logging turned off, an old TLS policy, root or privileged container)."""
+false = """The unit is not infrastructure definition, or its settings are scoped, least-privilege, encrypted and logged, or the public exposure is the resource's intended purpose as described in `app` (a public load balancer, a public website bucket)."""
+
+[signals.public_exposure]
+label = "publicly reachable or public ACL"
+patterns = [
+    '''0\.0\.0\.0/0|::/0|allUsers|allAuthenticatedUsers|\"public-read\"|acl\s*=\s*\"public|publicly_accessible\s*=\s*true|ingress\s*=\s*\"?ALLOW_ALL|INGRESS_TRAFFIC_ALL|associate_public_ip|public_ip|map_public_ip_on_launch\s*=\s*true|uniform_bucket_level_access\s*=\s*false|block_public_acls\s*=\s*false''',  # publicly reachable or public ACL
+]
+
+[signals.broad_iam]
+label = "broad privilege or admin role"
+patterns = [
+    '''roles/(owner|editor|iam\.securityAdmin|resourcemanager\.projectIamAdmin|\w+\.admin)|\"\*\"\s*$|Action\s*[:=]\s*\[?\s*\"\*\"|\"Resource\"\s*:\s*\"\*\"|cluster-admin|ClusterRoleBinding|AdministratorAccess|iam:PassRole|\bsudo\b|privileged:\s*true|runAsUser:\s*0|--privileged''',  # broad privilege or admin role
+]
+
+[signals.no_encryption]
+label = "encryption or TLS setting"
+patterns = [
+    '''encrypted\s*=\s*false|kms_key\w*\s*=\s*(null|\"\")|sse_algorithm|server_side_encryption|storage_encrypted\s*=\s*false|encryption\s*\{|enable_https_traffic_only\s*=\s*false|ssl_policy|min_tls_version\s*=\s*\"?TLS_1_[01]|tls_1_0|TLSv1(\.0|\.1)?\"''',  # encryption or TLS setting
+]
+
+[signals.logging_off]
+label = "logging configuration"
+patterns = [
+    '''logging\s*\{|enable_logging\s*=\s*false|log_config\s*\{|access_logs\s*\{|enable\s*=\s*false''',  # logging configuration
+]
+
+[signals.state_backend]
+label = "terraform state backend"
+patterns = [
+    '''backend\s*\"(local|s3|gcs|azurerm)\"|terraform\s*\{[^}]*backend''',  # terraform state backend
+]
+
+[signals.container_hardening]
+label = "container build hardening"
+patterns = [
+    '''^USER\s+root|^USER\s+0|ADD\s+https?://|apt-get upgrade|chmod\s+777|chmod\s+-R\s+7''',  # container build hardening
+]

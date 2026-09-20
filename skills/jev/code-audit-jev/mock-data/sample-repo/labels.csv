@@ -1,0 +1,28 @@
+id,path,line,severity,title,classify
+1,api/handlers/documents.py,18,High,SQL injection in search_documents,unit
+2,api/handlers/documents.py,34,High,Any document by id without org scoping,unit
+3,api/handlers/documents.py,41,High,delete_document has no auth,unit
+4,api/handlers/documents.py,50,High,Path traversal in download,unit
+5,api/handlers/documents.py,66,High,Command injection in convert,unit
+6,api/handlers/documents.py,73,High,pickle from upload,unit
+7,api/handlers/documents.py,79,High,SSRF path concat in forward_metrics,unit
+8,api/handlers/documents.py,86,Medium,Exception text to client in export,unit
+9,api/services/auth.py,10,High,Literal AWS key,unit
+10,api/services/auth.py,30,Medium,MD5 password hash,unit
+11,api/services/auth.py,35,Medium,random for reset token,unit
+12,api/services/cleanup.py,9,Medium,delete_objects errors ignored,unit
+13,web/src/Comment.tsx,5,High,dangerouslySetInnerHTML unsanitized,unit
+14,infra/storage.tf,2,High,allUsers on uploads bucket,unit
+15,infra/storage.tf,15,High,SSH from 0.0.0.0/0,unit
+16,infra/storage.tf,27,High,roles/owner on worker SA,unit
+17,.github/workflows/pr.yml,1,High,pull_request_target + unpinned + injection + curl|bash,unit
+18,Dockerfile,1,Medium,floating base + curl|sh + root,unit
+19,api/handlers/extras.py,16,Medium,Open redirect via next,unit
+20,api/handlers/extras.py,29,Medium,Delete on GET without CSRF control,unit
+21,api/handlers/extras.py,36,High,XXE with resolve_entities,unit
+22,api/handlers/extras.py,52,High,NoSQL filter from request body,unit
+23,api/handlers/extras.py,65,High,Mass assignment of body into user,unit
+24,api/handlers/extras.py,84,Medium,Regex from input and blind extractall,unit
+25,api/handlers/extras.py,93,Medium,Cookie without flags and == token compare,unit
+26,api/handlers/extras.py,114,Medium,Invoice by id without ownership,unit
+27,api/handlers/extras.py,125,Medium,Upload by extension only with user filename,unit

@@ -1,0 +1,42 @@
+# Weak cryptography: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "weak_cryptography"
+title = "Weak cryptography"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` uses a non-cryptographic random source for a security value, a broken hash for a security purpose, a hardcoded key, IV or salt, or disables TLS certificate verification."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["weak_crypto"]
+none = []
+
+[questions.weak_crypto]
+instructions = """Does `unit.code` use a non-cryptographic random source (random, Math.random) for a token, secret, id or nonce; use MD5 or SHA-1 for a security purpose such as passwords, signatures or integrity; hardcode an encryption key, IV, nonce or salt; or disable TLS certificate verification?"""
+true = """At least one of those practices appears in `unit.code` for a security purpose."""
+false = """Security values use a cryptographic random source, hashing is appropriate for its purpose (or used only for non-security fingerprints such as cache keys), keys come from configuration or a key service, and TLS verification is on."""
+
+[signals.weak_crypto]
+label = "weak crypto"
+patterns = [
+    '''hashlib\.(md5|sha1)\(|createHash\(['\"](md5|sha1)['\"]|MD5\(|Digest::MD5|\bDES\b|RC4|ECB''',  # weak hash or cipher
+    '''\brandom\.(random|randint|choice|choices|randrange|getrandbits)\(|Math\.random\(\)''',  # non-cryptographic randomness
+    '''verify\s*=\s*False|rejectUnauthorized\s*:\s*false|CERT_NONE|InsecureRequestWarning|NODE_TLS_REJECT_UNAUTHORIZED|ssl\._create_unverified_context|InsecureSkipVerify\s*:\s*true''',  # TLS verification disabled
+    '''(?i)\b(iv|nonce|salt)\s*=\s*b?['\"][0-9a-f]{8,}['\"]''',  # hardcoded IV / nonce / salt
+]
+
+[signals.strong_crypto]
+label = "cryptographic primitive in use"
+patterns = [
+    '''secrets\.(token_\w+|choice|compare_digest)|crypto\.randomBytes|randomUUID|hmac\.compare_digest|timingSafeEqual|sha256|sha512|bcrypt|argon2|scrypt|pbkdf2''',  # cryptographic primitive in use
+]
+
+[signals.crypto_key_ops]
+label = "encryption / key management"
+patterns = [
+    '''\bkms\b|KeyManagementService|encrypt\(|decrypt\(|Fernet\(|AES\.|createCipher|crypto_key|CryptoKey''',  # encryption / key management
+]

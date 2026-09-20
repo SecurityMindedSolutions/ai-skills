@@ -1,0 +1,27 @@
+# Unsafe deletion: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "unsafe_deletion"
+title = "Unsafe deletion"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` deletes or revokes data without acting on the result: a failure or partial batch failure is swallowed, retention or versioning would keep the bytes, or a multi-step delete has no ordering or rollback so a failure part-way leaves data behind."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["deletion_result_unchecked"]
+none = []
+
+[questions.deletion_result_unchecked]
+instructions = """Does `unit.code` delete, revoke, purge or expire data in a way that can silently leave the data behind: the delete's return value or error is caught and ignored, a batch delete's per-item failures are not read, a delete-by-query that matches nothing is treated as success, a multi-step delete has no ordering, transaction or rollback, or a versioned or soft-deleting store receives a plain delete?"""
+true = """A deletion in `unit.code` has at least one of those gaps."""
+false = """Deletion results and errors are propagated or acted on, batch responses are checked, and multi-step deletes are ordered or transactional; or the unit deletes nothing."""
+
+[signals.deletion]
+label = "deletes data"
+patterns = [
+    '''\b(delete|remove|destroy|purge|truncate|drop)\w*\(|DELETE FROM|TRUNCATE|DROP TABLE|\.delete\(\)|deleteMany\(|delete_blob|delete_objects?|batch\.delete|rm -rf|unlink\(''',  # deletes data
+]

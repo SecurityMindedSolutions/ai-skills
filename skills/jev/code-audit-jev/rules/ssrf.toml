@@ -1,0 +1,45 @@
+# Server-side request forgery: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "ssrf"
+title = "Server-side request forgery"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` makes an outbound request whose destination host, scheme or authority can be set or altered by an outside value, including a 'path' concatenated onto a base URL without validation."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["outbound_destination_from_input"]
+none = []
+
+[questions.outbound_destination_from_input]
+instructions = """Does `unit.code` make an outbound HTTP, socket or fetch request whose destination (host, scheme, port or authority) is built from, or can be changed by, a value from outside the system, including a caller-supplied 'path' or identifier concatenated onto a base URL without checking that the resulting host is still the intended one?"""
+true = """An outside value is used to build the outbound URL and no check confirms the destination host, scheme and authority are the intended ones (a concatenated 'path' with no leading-slash / no '@' / no '//' validation counts as true)."""
+false = """The outbound destination is a constant, configuration, or an allowlisted or pinned host, or the outside value is validated so it cannot change the host or scheme, or the unit makes no outbound request."""
+
+[signals.outbound_http]
+label = "outbound HTTP call"
+patterns = [
+    '''requests\.(get|post|put|delete|patch|request)\(|httpx\.\w+\(|urllib\.request\.urlopen|urlopen\(|\bfetch\(|axios\.\w+\(|https?\.request\(|http\.Get\(|HttpClient|RestTemplate|Net::HTTP''',  # outbound HTTP call
+]
+
+[signals.url_concat]
+label = "URL built from a variable"
+patterns = [
+    '''(HOST|BASE|ORIGIN|UPSTREAM|TARGET|ENDPOINT|URL)\w*\s*\+\s*\w|f["']https?://[^"']*\{|`https?://[^`]*\$\{|new URL\([^)]*,|urljoin\(''',  # URL built from a variable
+]
+
+[signals.redirect]
+label = "redirect / navigation with a value"
+patterns = [
+    '''redirect\(|res\.redirect\(|window\.location(\.href)?\s*=|location\.replace\(|Location:\s*''',  # redirect / navigation with a value
+]
+
+[signals.timeout_set]
+label = "timeout on outbound call"
+patterns = [
+    '''timeout\s*[=:]\s*\d|timeout=|signal:\s*AbortSignal|AbortController''',  # timeout on outbound call
+]

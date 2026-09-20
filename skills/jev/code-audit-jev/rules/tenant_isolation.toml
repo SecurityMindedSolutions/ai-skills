@@ -1,0 +1,38 @@
+# Tenant isolation: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "tenant_isolation"
+title = "Tenant isolation"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` reads or writes records that belong to one customer, tenant or organization, using an identifier the caller supplies, without scoping the access to the caller's own tenant."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["accesses_tenant_data"]
+none = ["tenant_scoped"]
+
+[questions.accesses_tenant_data]
+instructions = """Does `unit.code` read or write records, files or keys that belong to one customer, tenant, organization or workspace (as opposed to global configuration or data the system owns)?"""
+true = """The unit queries, loads, stores, lists or deletes per-tenant or per-customer data."""
+false = """The unit touches no per-tenant data, or only global settings, static content, or its own process state."""
+
+[questions.tenant_scoped]
+instructions = """Where `unit.code` reads or writes per-tenant records, is every such access scoped to a tenant, organization or workspace identifier that the framework resolved and verified (per `app`), rather than looked up by a bare record identifier the caller supplied?"""
+true = """Each access is keyed or filtered by the resolved tenant identifier (a tenant-scoped collection path, a tenant_id filter, a tenant-owned bucket), or the record is loaded and then checked against the caller's tenant."""
+false = """At least one access uses only a caller-supplied identifier (document id, user id, slug, path parameter) with no tenant scoping or ownership check, or the unit accesses no per-tenant data at all."""
+
+[signals.tenant_scope]
+label = "tenant / org scoping"
+patterns = [
+    '''tenant_id|tenantId|org_id|orgId|organization_id|workspace_id|account_id|company_id|\.collection\([^)]*tenant|/tenants/\{|tenants/\$\{|\{tenant''',  # tenant / org scoping
+]
+
+[signals.stored_user_data]
+label = "reads stored records (second-order source)"
+patterns = [
+    '''\.get\(\)\.to_dict\(\)|\.to_dict\(\)|doc\.get\(|snapshot\.|\.find_one\(|\.findOne\(|\.fetch\(|SELECT ''',  # reads stored records (second-order source)
+]

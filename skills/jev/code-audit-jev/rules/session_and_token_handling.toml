@@ -1,0 +1,21 @@
+# Session, cookie and token handling: one rule of the code audit.
+
+id = "session_and_token_handling"
+title = "Session, cookie and token handling"
+
+class = """`unit.code` handles a session, cookie, JWT or API token unsafely: sets a session or auth cookie without Secure, HttpOnly or SameSite, decodes a JWT without verifying its signature or accepts `alg: none`, compares a secret or token with `==` instead of a constant-time compare, stores a session or token in browser localStorage, keeps a token in a URL, or never expires or revokes a session."""
+
+[vector]
+all = ["session_or_token_mishandled"]
+none = []
+
+[questions.session_or_token_mishandled]
+instructions = """Does `unit.code` do any of these: set an authentication or session cookie without the Secure, HttpOnly or SameSite attributes; decode or accept a JWT without verifying the signature (jwt.decode with verify=False or verify_signature False, decode() instead of verify(), accepting the `none` algorithm, the algorithm taken from the token header); compare a password, token, HMAC or secret with `==` / `===` rather than a constant-time compare; store a session or access token in localStorage or sessionStorage; put a session or bearer token into a URL query string; or create a session or token with no expiry?"""
+true = """At least one of those practices appears in `unit.code`."""
+false = """Cookies carry Secure, HttpOnly and SameSite (or the framework described in `app` sets them), JWTs are verified with a pinned algorithm, secrets are compared in constant time, tokens live in HttpOnly cookies or memory, sessions expire; or the unit handles no session, cookie or token."""
+
+[signals.cookie_or_jwt]
+label = "cookie / JWT / token handling"
+patterns = [
+    '''set_cookie\(|setCookie\(|res\.cookie\(|Set-Cookie|httponly|HttpOnly|samesite|SameSite|jwt\.decode\(|jwt\.verify\(|verify_signature|verify\s*=\s*False|algorithms\s*=|alg\s*[:=]\s*["']none|localStorage\.setItem\([^)]*(token|session|jwt)|sessionStorage\.setItem\([^)]*(token|session|jwt)|compare_digest|timingSafeEqual|==\s*(token|secret|password|signature|hmac)\b|(token|secret|password|signature|hmac)\s*==''',
+]

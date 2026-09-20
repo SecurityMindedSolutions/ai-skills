@@ -1,0 +1,27 @@
+# Unsafe deserialization: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "unsafe_deserialization"
+title = "Unsafe deserialization"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` deserializes or evaluates data from outside with a mechanism that can execute code or construct arbitrary objects (pickle, unsafe YAML loaders, eval, marshal, unserialize)."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["unsafe_deserialization"]
+none = []
+
+[questions.unsafe_deserialization]
+instructions = """Does `unit.code` deserialize, parse or evaluate data that could come from outside with a mechanism that can execute code or build arbitrary objects (pickle, marshal, yaml.load without a safe loader, eval, exec, unserialize, an object-input stream, jsonpickle)?"""
+true = """Such a mechanism is applied to data that is not a constant the code itself wrote."""
+false = """Only JSON or safe loaders are used, the mechanism is applied to trusted constants, or no deserialization occurs."""
+
+[signals.deserialization]
+label = "unsafe deserialization"
+patterns = [
+    '''pickle\.loads?\(|marshal\.loads?\(|yaml\.load\((?![^)]*SafeLoader)|yaml\.unsafe_load|\bunserialize\(|ObjectInputStream|jsonpickle''',  # unsafe deserialization
+]

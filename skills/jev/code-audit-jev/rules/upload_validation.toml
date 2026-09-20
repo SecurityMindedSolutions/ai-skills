@@ -1,0 +1,22 @@
+# File upload validation: one rule of the code audit. Path traversal in the
+# stored path is path_traversal.toml; this one is about what is accepted.
+
+id = "upload_validation"
+title = "File upload validation"
+
+class = """`unit.code` accepts an uploaded file without validating it: the type is checked by extension or client Content-Type only (or not at all), there is no size cap before the whole file is read, the user-supplied filename is kept for storage, or the file is stored somewhere it can be served back with an executable or HTML type."""
+
+[vector]
+all = ["upload_unvalidated"]
+none = []
+
+[questions.upload_unvalidated]
+instructions = """Does `unit.code` accept an uploaded file (multipart file, base64 body, request.files, a presigned-upload completion) and at least one of these is missing: an allowlist check of the type based on content (magic bytes or a parser), not only the extension or the client-sent Content-Type; a size limit enforced before the whole file is read into memory; a generated storage name instead of the user-supplied filename; and a storage location or served Content-Type that cannot make the file execute or render as HTML/SVG in a browser?"""
+true = """An upload is accepted and at least one of those checks is absent in `unit.code` and not described in `app` as done elsewhere."""
+false = """Type is verified from content against an allowlist, size is capped before reading, the stored name is generated, the served type is safe, or `app` says a shared upload validator performs these checks, or the unit accepts no upload."""
+
+[signals.upload_handling]
+label = "upload accepted"
+patterns = [
+    '''request\.files|req\.file\b|req\.files|multipart|FileStorage|UploadFile|formidable|multer|busboy|\.filename\b|content_type|mimetype|magic\b|imghdr|filetype\.guess|MAX_CONTENT_LENGTH|secure_filename''',
+]

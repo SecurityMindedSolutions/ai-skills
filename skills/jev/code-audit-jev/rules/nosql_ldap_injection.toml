@@ -1,0 +1,23 @@
+# NoSQL and LDAP injection: one rule of the code audit. SQL, command and
+# template injection are in injection.toml; this one is for query languages
+# and filters that are built as structures rather than strings.
+
+id = "nosql_ldap_injection"
+title = "NoSQL and LDAP injection"
+
+class = """`unit.code` builds a database query, filter or directory search from an outside value in a way that lets the value change the query's meaning: a document-store filter that takes an object or operator from the request (`{"$gt": ...}`, `$where`), a field name or collection name from input, a `where()` whose field or operator comes from input, or an LDAP filter string concatenated from input without escaping."""
+
+[vector]
+all = ["query_structure_from_input"]
+none = []
+
+[questions.query_structure_from_input]
+instructions = """Does `unit.code` let an outside value decide the STRUCTURE of a database query or directory search rather than just a compared value: a request object passed as a whole into a filter or find() call, an operator or field name or collection name taken from input, a `where()` field or operator from input, or an LDAP filter string built by concatenation without escaping the value?"""
+true = """A request-supplied object, key, field name, operator or collection name shapes the query, or an LDAP filter is concatenated from input without escaping."""
+false = """Only compared values come from outside and they are placed as values (a fixed field name and operator with the input as the operand, or a parameterized query), field and collection names are constants or come from an allowlist, LDAP values are escaped, or the unit runs no query."""
+
+[signals.filter_from_object]
+label = "query built from a request object or dynamic key"
+patterns = [
+    '''\.(find|find_one|findOne|update_many|updateMany|delete_many|deleteMany|aggregate)\(\s*(req\.|request\.|body|params|query|payload|data)\b|\$where|\$regex|\$ne\b|\$gt\b|\.where\(\s*[a-z_]+\s*,|\.collection\(\s*[a-z_]+\s*\)|ldap|LDAP|search_s\(|searchFilter|\(\&\(|\(\|\(''',
+]

@@ -1,0 +1,92 @@
+# Core of the code audit: the model, the scoring, and the questions every rule
+# shares. Rule-specific content lives in the sibling *.toml files.
+
+[model]
+name = "jev-latest"
+usd_per_million_input_tokens = 0.042
+max_unit_tokens = 6000
+
+[scoring]
+# score = 100 * min(1, w_severity * severity/4 + w_vector * strongest_vector * (1 - mitigation_discount * mitigation))
+w_severity = 0.5
+w_vector = 0.5
+mitigation_discount = 0.5
+bands = [[0, "Clean"], [25, "Note"], [50, "Review"], [75, "Likely"]]
+attention_score = 50
+choice_min_confidence = 0.35
+choice_min_own_vector = 0.2
+# When the choice is ignored (unsure or contradicted), the strongest vector names the
+# category only if it is at least this strong; otherwise the unit is `none`.
+fallback_min_vector = 0.5
+drop_not_production = 0.6
+signal_threshold = 0.5
+
+# The class choice: one option per rule (its `class` text) plus these two.
+[choice]
+instructions = """Read `unit.code`, one unit of source from the file described in `file`, in the system described in `app`, with the regex facts in `code_signals`. Which option best describes the most serious security defect that is visible in `unit.code` itself? Judge only what the unit shows plus the file context in `file.imports` and `file.guard_markers`; choose `none` when the risky-looking operations act on trusted values (constants, environment configuration, the system's own identifiers) or are validated in the unit."""
+none = """No security defect is visible in `unit.code`: the code is inert, its risky operations act only on trusted or validated values, or the only concerns are style."""
+other = """A security defect visible in `unit.code` that none of the other classes describes (a race that grants access, a business-logic bypass, a check on the wrong value, a fail-open default)."""
+
+# Impact if exploited, five ordered levels. Jev returns a distribution over them.
+[severity]
+instructions = """If the most serious defect visible in `unit.code` were exploited in the system described in `app`, how bad would the impact be? Rate the impact of the defect itself, not the likelihood that it exists; choose the first level when no defect is visible."""
+levels = [
+    """None. No security defect is visible; the unit is inert or its risky operations act on trusted or validated values.""",
+    """Low. A defect with limited impact: information of little sensitivity is exposed, a control is weaker than best practice, or exploitation needs an already-privileged caller and gains nothing beyond their access.""",
+    """Medium. A defect an attacker could use to read or change one user's or one tenant's data, deny service, abuse a business function, or escalate within a tenant; or a configuration gap that widens the blast radius of another bug.""",
+    """High. A defect that lets an attacker read or change other tenants' data, take over accounts, execute commands or code on a server, reach internal services or metadata, or that exposes a live credential for a production system.""",
+    """Critical. A defect that gives an anonymous attacker code execution, administrative control, or read and write access to all customers' data, or that leaks a credential granting that.""",
+]
+
+[questions.mitigation_in_unit]
+instructions = """Does `unit.code` itself contain a control that defeats the defect it might otherwise have: parameterized queries, schema validation, an allowlist, a type coercion, a sanitizer, an ownership or tenant check, host pinning, path normalization with a prefix check, a secret read from a manager?"""
+true = """A control of that kind is visible in `unit.code` and applies to the risky value or operation."""
+false = """No such control is visible in `unit.code`, or it does not apply to the risky value or operation."""
+
+[questions.not_production_code]
+instructions = """Is `unit.code` test code, an example, a fixture, a mock, documentation, commented-out code, or a migration that has already run, so that it never executes for the real system? Build, deploy, CI pipeline, container and infrastructure definitions DO execute for the real system and count as production code."""
+true = """The unit is a test, example, fixture, mock, doc block, commented-out code, or a one-off migration that already ran; it never executes for the real system."""
+false = """The unit is application code, a library, a build or deploy pipeline, a CI workflow, a container definition, or infrastructure definition that runs for the real system."""
+
+# Generic facts every rule can see: where outside values enter, and the guards present.
+[signals.request_input]
+label = "reads request input"
+patterns = [
+    '''request\.(args|form|json|data|values|files|headers|cookies|get_json|get_data|path|full_path|url|query_string|environ|view_args|remote_addr)|req\.(body|query|params|headers|cookies|files|url|path|ip)|\bparams\[|request\.GET|request\.POST|request\.body|ctx\.request|event\[.(body|queryStringParameters|headers|pathParameters).\]|searchParams\.get|useParams\(|useSearchParams\(|location\.search|window\.location''',
+]
+
+[signals.event_input]
+label = "reads an event / message payload"
+patterns = [
+    '''cloud_event|CloudEvent|pubsub|message\.data|base64\.b64decode|event\.data|Records\[|sqs|kinesis|attributes\[''',
+]
+
+[signals.external_response]
+label = "consumes an external response"
+patterns = [
+    '''\.json\(\)|resp\.(text|content|json)|response\.(json|text|data)|await res\.json\(\)''',
+]
+
+[signals.env_config]
+label = "reads environment configuration (trusted)"
+patterns = [
+    '''os\.environ|os\.getenv|process\.env|getenv\(|Deno\.env''',
+]
+
+[signals.validation]
+label = "validation / sanitization / parameterization"
+patterns = [
+    '''validate\w*\(|schema\.(load|parse|validate)|\.parse\(|z\.object|pydantic|BaseModel|marshmallow|jsonschema|allowlist|ALLOWLIST|whitelist|re\.fullmatch|re\.match\(|isinstance\(|int\(|uuid\.UUID\(|secure_filename|sanitize\w*\(|escape\(|DOMPurify|nh3\.|bleach\.|safeUrl|parameteriz|\?\s*,|%s''',
+]
+
+[signals.csrf]
+label = "CSRF protection"
+patterns = [
+    '''csrf|CSRF|SameSite|Origin\b.*(check|verify|enforce)|X-Requested-With''',
+]
+
+[signals.rate_limit]
+label = "rate limiting"
+patterns = [
+    '''rate.?limit|throttl|RateLimiter|limiter\.|Retry-After|429''',
+]

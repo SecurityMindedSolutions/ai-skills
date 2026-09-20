@@ -1,0 +1,34 @@
+# Information disclosure: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "information_disclosure"
+title = "Information disclosure"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` returns exception details, stack traces, internal identifiers or debug output to a client, or logs secrets, passwords or personal data."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["error_detail_exposed"]
+none = []
+
+[questions.error_detail_exposed]
+instructions = """Does `unit.code` send exception messages, stack traces, internal paths, query text or debug output to a client response, or write passwords, tokens, session cookies or personal data into logs?"""
+true = """A response body or log line built in `unit.code` includes exception detail, a stack trace, internal implementation detail, or a secret or personal value."""
+false = """Errors are mapped to generic messages before reaching the client, exception detail goes only to server-side logs, and logs carry identifiers and events rather than secrets or personal data."""
+
+[signals.exception_to_client]
+label = "exception to client"
+patterns = [
+    '''str\(e\)|str\(exc\)|str\(err\)|repr\(e\)|traceback\.format_exc\(\)|err\.message|error\.message|e\.message|\.stack\b|print_exc\(\)|debug\s*=\s*True|DEBUG\s*=\s*True''',  # exception detail in a response or log
+    '''except\s*:\s*$|except\s+Exception\s*:\s*\n\s*pass|\.catch\(\s*\(\)\s*=>\s*(void 0|undefined|\{\}|null)\)|catch\s*\([^)]*\)\s*\{\s*\}''',  # swallowed exception
+]
+
+[signals.sensitive_logging]
+label = "possibly logs a secret"
+patterns = [
+    '''(?i)(log|logger|console)\.\w+\([^)]*(password|token|secret|authorization|cookie|ssn|credit)''',  # possibly logs a secret
+]

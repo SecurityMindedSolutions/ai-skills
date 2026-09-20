@@ -1,0 +1,27 @@
+# Cross-site scripting: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "xss"
+title = "Cross-site scripting"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` renders data that could come from outside as raw HTML or executable markup, through an explicit bypass such as dangerouslySetInnerHTML, innerHTML, v-html, mark_safe or a template with autoescape off, with no sanitizer on that value."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["raw_html_from_data"]
+none = []
+
+[questions.raw_html_from_data]
+instructions = """Does `unit.code` render data as raw HTML or executable markup through an explicit bypass (dangerouslySetInnerHTML, innerHTML, outerHTML, document.write, v-html, mark_safe, |safe, bypassSecurityTrust, autoescape off) where the data is not a constant and no sanitizer (DOMPurify, nh3, bleach, an allowlisting sanitizer) is applied to it in `unit.code`?"""
+true = """Such a bypass renders non-constant data with no sanitizer visible in `unit.code`."""
+false = """No bypass is used (the framework escapes output), the rendered value is a constant, or a sanitizer is applied to the value before rendering."""
+
+[signals.html_sink]
+label = "raw HTML sink"
+patterns = [
+    '''dangerouslySetInnerHTML|\.innerHTML\s*=|\.outerHTML\s*=|document\.write\(|insertAdjacentHTML|v-html|bypassSecurityTrust|\$\(.*\)\.html\(|Markup\(|\|\s*safe\b|mark_safe\(|render_template_string\(''',  # raw HTML sink
+]

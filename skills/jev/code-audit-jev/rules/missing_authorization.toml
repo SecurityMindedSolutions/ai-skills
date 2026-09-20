@@ -1,0 +1,43 @@
+# Missing authorization: one rule of the code audit. Everything the runner knows about this
+# category is in this file: the class text Jev chooses between, the yes/no
+# questions it answers, the regex facts computed in code and handed to it, and
+# how the answers compose into this rule's vector. Copy this file to add a rule.
+
+id = "missing_authorization"
+title = "Missing authorization"
+
+# The option Jev sees in the "which class of defect is this" choice.
+class = """`unit.code` serves a request or performs an action that should require a signed-in or permitted caller, and neither `unit.code`, `file.guard_markers` nor the framework described in `app` shows that check being applied to it."""
+
+# vector = product(all) * product(1 - none). This is the "and" composed in code
+# because Jev answers one literal condition at a time.
+[vector]
+all = ["handles_external_request", "privileged_operation"]
+none = ["auth_check_present"]
+
+[questions.handles_external_request]
+instructions = """Is `unit.code` an entry point that receives requests or events from outside the process: an HTTP route handler, an API endpoint, a webhook receiver, a queue or event consumer, or a function the platform invokes with a request or event object?"""
+true = """The unit is registered as, decorated as, or shaped like a request or event handler (takes a request, event or message object, or is bound to a route or trigger)."""
+false = """The unit is an internal helper called by other code (its parameters are plain values such as ids, names, lists or records rather than a request or event object), a data model, a UI component, configuration, or a script that runs from the command line."""
+
+[questions.privileged_operation]
+instructions = """Does `unit.code` perform an operation that should be restricted to an authenticated and permitted caller: creating, changing or deleting stored data, reading data that belongs to a customer or user, issuing or changing credentials, sessions, roles or memberships, sending email, charging money, or calling infrastructure or key-management APIs?"""
+true = """At least one such operation appears in `unit.code`."""
+false = """The unit only reads public or static content, computes, formats, validates, or serves health and version information."""
+
+[questions.auth_check_present]
+instructions = """Is an authentication or authorization check applied to `unit.code`: a decorator, guard, middleware, session validation, permission or capability check, or role check visible in `unit.code`, listed in `file.guard_markers` as applying to this handler, or described in `app` as a framework gate that every handler of this kind passes through before it runs?"""
+true = """Such a check is visible in `unit.code`, or the route is registered with an auth level other than none / public, or `app` states that a framework gate covers every handler of this kind."""
+false = """No check is visible, the route is explicitly marked public, anonymous or auth level none, or `app` says handlers must add their own guard and this one does not."""
+
+[signals.auth_check]
+label = "authentication or permission check"
+patterns = [
+    '''@\w*(login_required|auth|require|permission|role|guard|secure|protect|jwt)\w*|require_auth|requires_auth|login_required|require_role|require_capability|check_permission|authorize\w*\(|authenticate\w*\(|verify_id_token|verify_token|validate_session|get_current_user|current_user|ensure_member|require_member|UseGuards|PreAuthorize|isAuthenticated|requireAuth|[A-Za-z]+Level\.[A-Z_]+_REQUIRED|auth_level\s*=\s*(?!.*NONE)|permission_classes|@login_required|session\[.user|req\.user\b|request\.user\b|capabilit''',  # authentication or permission check
+]
+
+[signals.auth_none_marker]
+label = "explicitly marked unauthenticated"
+patterns = [
+    '''[A-Za-z]+Level\.NONE|auth_level\s*=\s*[A-Za-z.]*NONE|auth_level\s*=\s*['\"]?none|@public|allow_anonymous|permission_classes\s*=\s*\[\s*\]|AllowAny|skip_auth|no_auth|PUBLIC_ROUTE|is_public\s*=\s*True''',  # explicitly marked unauthenticated
+]

@@ -1,0 +1,21 @@
+# Mass assignment and prototype pollution: one rule of the code audit.
+
+id = "mass_assignment"
+title = "Mass assignment and prototype pollution"
+
+class = """`unit.code` copies an outside object into a stored record, a model, a settings object or a merge target wholesale (`dict.update(request.json)`, `{**record, **body}`, `Object.assign(target, req.body)`, a spread of the request body, a deep merge of user JSON), so the caller can set fields they should not (role, owner, price, tenant) or pollute prototypes via `__proto__` / `constructor`."""
+
+[vector]
+all = ["untrusted_object_merged"]
+none = []
+
+[questions.untrusted_object_merged]
+instructions = """Does `unit.code` merge, spread, assign or update from an object that comes from outside (a request body, form, uploaded JSON, message payload) into a record, model instance, settings object, query, or another object, without restricting the keys to an explicit allowlist first?"""
+true = """A whole outside object is merged or spread into something the system keeps or acts on (dict.update, {**a, **body}, Object.assign, a spread of the body, a deep merge, setattr in a loop over input keys), and no allowlist of permitted keys is applied before the merge."""
+false = """Fields are copied one by one by name, an explicit allowlist or a typed schema with fixed fields is applied first, the merged object is the system's own, or the unit merges nothing."""
+
+[signals.wholesale_merge]
+label = "wholesale merge of an outside object"
+patterns = [
+    '''\.update\(\s*(req\.|request\.|body|payload|data|params|form|attrs|kwargs)\b|\{\s*\*\*\s*(req\.|request\.|body|payload|data|params|form)|Object\.assign\([^,]+,\s*(req\.|request\.|body|payload|data|params)|\.\.\.\s*(req\.body|body|payload|params|data)\b|setattr\([^,]+,\s*(k|key|name|field)\b|deepmerge|lodash\.merge|_\.merge\(|__proto__|constructor\[''',
+]

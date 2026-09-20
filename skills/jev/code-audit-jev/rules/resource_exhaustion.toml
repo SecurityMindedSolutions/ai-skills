@@ -1,0 +1,28 @@
+# Resource exhaustion: one rule of the code audit. Unbounded work an outside
+# value can trigger: regex denial of service, unbounded reads, missing limits.
+
+id = "resource_exhaustion"
+title = "Resource exhaustion"
+
+class = """`unit.code` lets an outside value make the system do unbounded work: a regular expression built from input or applied to input with nested quantifiers (ReDoS), a read of a request body, upload, file or response with no size cap, a loop or recursion whose count comes from input, an outbound call with no timeout, a query with no limit, or a zip/archive expanded without a size check."""
+
+[vector]
+all = ["unbounded_work_from_input"]
+none = []
+
+[questions.unbounded_work_from_input]
+instructions = """Can an outside value make `unit.code` consume unbounded time, memory, disk or connections: a regex compiled from input, a regex with nested or overlapping quantifiers applied to input, a body, upload, file or response read entirely with no size cap, a loop count, page size, depth or repetition taken from input without a maximum, an outbound request with no timeout, a database query with no limit on rows the caller can widen, or an archive expanded without checking its uncompressed size?"""
+true = """At least one such unbounded operation is driven by an outside value and no cap, timeout or limit is visible in `unit.code`."""
+false = """Sizes, counts, depths and page sizes are capped, outbound calls have timeouts, regexes are constants without nested quantifiers, reads are bounded or streamed with a limit, a request body is read through a web framework that `app` says caps request body size, or the unit does no such work."""
+
+[signals.unbounded_read]
+label = "unbounded read or missing limit"
+patterns = [
+    '''\.read\(\)|get_data\(\)|\.text\b|\.json\(\)|readFile\(|\.arrayBuffer\(\)|\.buffer\(\)|extractall\(|\.extract\(|zipfile|tarfile|re\.compile\(\s*[a-z_]|new RegExp\(\s*[a-z_]|\(\.\*\)\+|\(\.\+\)\+|\(\[\^[^\]]*\]\+\)\+|\bwhile\s+True|limit\s*=\s*(req|request|params|query|body)|page_size\s*=\s*(req|request|params|query|body)''',
+]
+
+[signals.timeout_present]
+label = "timeout or cap present"
+patterns = [
+    '''timeout\s*[=:]\s*\d|timeout=|max_?(size|bytes|length|items|depth|pages)|MAX_|\.limit\(\s*\d|limit=\d|AbortSignal|maxBodyLength|maxContentLength|content_length''',
+]

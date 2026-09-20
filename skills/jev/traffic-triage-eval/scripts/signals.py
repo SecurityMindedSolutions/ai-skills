@@ -71,7 +71,9 @@ def ua_class(ua: str | None) -> str:
 PROBE_FAMILIES: dict[str, re.Pattern] = {
     "wordpress": re.compile(r"/(wp-login\.php|wp-admin|wp-content|wp-includes|xmlrpc\.php|wp-json|wlwmanifest\.xml)", re.I),
     "php_admin": re.compile(r"/(phpmyadmin|pma|myadmin|phpinfo\.php|adminer|mysql|dbadmin)\b|\.php(\?|$)", re.I),
-    "env_files": re.compile(r"/\.env(\.|$)|/\.(git|svn|hg|DS_Store|htaccess|htpasswd|bash_history|aws|ssh|npmrc|docker)", re.I),
+    "env_files": re.compile(r"/\.env(\.|$)|/\.(git|svn|hg|DS_Store|htaccess|htpasswd|bash_history|aws|ssh|npmrc|docker)|[a-z_-]+\.env$", re.I),
+    # bare requests for OS / process secrets files: probing, the same class as .env, not a traversal payload
+    "secrets_files": re.compile(r"^/(api/|\w+/)?(proc/self/(environ|cmdline|maps)|etc/(passwd|shadow|hosts)|windows/win\.ini|boot\.ini|home/\w+/\.|root/\.)", re.I),
     "config_files": re.compile(r"/(config\.(json|yml|yaml|php|js)|web\.config|composer\.(json|lock)|package\.json|\.travis\.yml|appsettings\.json|settings\.py|secrets\.(json|yml)|credentials)(\?|$)", re.I),
     "backup_files": re.compile(r"\.(bak|old|orig|backup|sql|sql\.gz|tar\.gz|zip|rar|7z|swp)(\?|$)|/(backup|backups|dump|db_backup)", re.I),
     "java_actuator": re.compile(r"/(actuator|jolokia|env|beans|heapdump|console|manager/html|jmx-console|invoker|struts|solr|jenkins)\b", re.I),
@@ -87,7 +89,8 @@ PROBE_FAMILIES: dict[str, re.Pattern] = {
 
 # --- Payloads: exploit-shaped strings in the path or query ------------------
 PAYLOAD_FAMILIES: dict[str, re.Pattern] = {
-    "traversal": re.compile(r"\.\./|\.\.\\|%2e%2e|%252e|/etc/passwd|/proc/self|boot\.ini|win\.ini", re.I),
+    # dot-dot sequences only; a bare /etc/passwd path is a probe (secrets_files above), a ../etc/passwd is a payload
+    "traversal": re.compile(r"\.\./|\.\.\\|%2e%2e|%252e|\.\.%2f|\.\.%5c|\.\.;/", re.I),
     "sqli": re.compile(r"(\bunion\b.{0,20}\bselect\b|\bsleep\(|benchmark\(|pg_sleep|waitfor\s+delay|'\s*or\s*'?\d|\bor\s+1\s*=\s*1|information_schema|@@version|xp_cmdshell|--\s*$|/\*!)", re.I),
     "xss": re.compile(r"<script|javascript:|onerror\s*=|onload\s*=|<img\b|<svg\b|alert\(|document\.cookie|String\.fromCharCode", re.I),
     "cmd_injection": re.compile(r"(;|\||`|\$\(|%0a|%0d)\s*(cat|ls|id|whoami|wget|curl|nc|bash|sh|powershell|cmd)\b|/bin/(ba)?sh|\bwhoami\b|\becho\b.{0,10}\$|\$\{IFS\}", re.I),

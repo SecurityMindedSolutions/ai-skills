@@ -42,11 +42,35 @@ def signals_from(answers: dict) -> dict:
         elif spec["type"] == "score":
             out[key] = round(a["score"], 2)
             out[f"{key}_confidence"] = round(a["confidence"], 3)
+            probs = {int(k): round(v, 3) for k, v in a["probabilities"].items()}
+            out[f"{key}_probabilities"] = probs
+            top = max(probs, key=probs.get)
+            out[f"{key}_level"] = q.SEVERITY_LEVELS[top]
+            out[f"{key}_level_p"] = probs[top]
+            out[f"{key}_p_concerning_or_worse"] = round(sum(v for k, v in probs.items() if k >= 2), 3)
         elif spec["type"] == "choice":
             out[key] = a["choice"]
             out[f"{key}_confidence"] = round(a["confidence"], 3)
             out[f"{key}_probabilities"] = {k: round(v, 3) for k, v in a.get("probabilities", {}).items()}
     return out
+
+
+def threat_score(s: dict) -> float:
+    """0-100 from Jev's answers under the weights in questions.py."""
+    vector = max(s["exploit_payloads"], s["credential_attack"], s["enumeration"])
+    gate = q.VECTOR_GATE_FLOOR + (1 - q.VECTOR_GATE_FLOOR) * s["app_aware"]
+    scanning = max(s["scanner_tool"], s["generic_probing"], s["wrong_host"])
+    raw = (q.W_SEVERITY * s["threat_severity"] / 3 + q.W_VECTOR * vector * gate
+           + q.W_APP_AWARE * s["app_aware"] + q.W_SCANNING * scanning)
+    return round(100 * min(1.0, raw), 1)
+
+
+def band_for(score: float) -> str:
+    name = q.BANDS[0][1]
+    for floor, label in q.BANDS:
+        if score >= floor:
+            name = label
+    return name
 
 
 def _raise(category: str, floor: str) -> str:
@@ -68,6 +92,10 @@ def decide(s: dict, code: dict[str, str], requests: int) -> tuple[str, list[str]
         else:
             reasons.append(f"choice confidence {s['traffic_class_confidence']} below {q.CHOICE_MIN_CONFIDENCE}")
             cat = "unclear"
+    if cat == "malicious" and s["app_aware"] < q.MALICIOUS_MIN_APP_AWARE \
+            and max(s["credential_attack"], s["enumeration"]) < q.MALICIOUS_KEEP_SIGNAL:
+        cat = "background_scan"
+        reasons.append(f"malicious needs knowledge of this app; app_aware {s['app_aware']} with no credential or enumeration pattern is scanning")
     if ("payloads" in code or "waf_attack_labels" in code) and s["app_aware"] >= q.PAYLOAD_PLUS_APP_AWARE:
         cat = _raise(cat, "malicious")
         attack_floor = True
@@ -101,15 +129,20 @@ def classify_profile(profile: dict, app: str, window: str, model: str = q.MODEL,
     latency_ms = round((time.perf_counter() - t0) * 1000)
     s = signals_from(response["answers"])
     category, reasons, attack_floor = decide(s, profile["code_signals"], profile["volume"]["requests"])
-    attention = attack_floor or (
-        s["threat_severity"] >= q.ATTENTION_SEVERITY and s["threat_severity_confidence"] >= q.ATTENTION_SEVERITY_CONF)
+    score = threat_score(s)
+    band = band_for(score)
+    attention = attack_floor or (score >= q.ATTENTION_SCORE and category not in q.ATTENTION_EXCLUDED_CATEGORIES)
     return {
         "ip": profile["ip"],
         "category": category,
         "jev_category": s["traffic_class"],
         "category_confidence": s["traffic_class_confidence"],
-        "severity": s["threat_severity"],
-        "severity_confidence": s["threat_severity_confidence"],
+        "score": score,
+        "band": band,
+        "jev_severity_level": s["threat_severity_level"],
+        "jev_severity_level_p": s["threat_severity_level_p"],
+        "jev_severity_expectation": s["threat_severity"],
+        "jev_severity_confidence": s["threat_severity_confidence"],
         "attention": attention,
         "signals": fired(s),
         "code_signals": profile["code_signals"],

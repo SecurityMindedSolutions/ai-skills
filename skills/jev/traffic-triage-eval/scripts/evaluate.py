@@ -94,8 +94,12 @@ def flatten(verdict: dict, profile: dict, label: str) -> dict:
         "category": verdict.get("category", "error"),
         "jev_category": verdict.get("jev_category", ""),
         "category_confidence": verdict.get("category_confidence", ""),
-        "severity": verdict.get("severity", ""),
-        "severity_confidence": verdict.get("severity_confidence", ""),
+        "score": verdict.get("score", ""),
+        "band": verdict.get("band", ""),
+        "jev_severity_level": verdict.get("jev_severity_level", ""),
+        "jev_severity_expectation": verdict.get("jev_severity_expectation", ""),
+        "jev_severity_confidence": verdict.get("jev_severity_confidence", ""),
+        "jev_severity_distribution": ", ".join(f"{q.SEVERITY_LEVELS[k]} {v}" for k, v in verdict.get("detail", {}).get("threat_severity_probabilities", {}).items()),
         "attention": verdict.get("attention", False),
         "attention_text": "YES" if verdict.get("attention") else "",
         "requests": v["requests"],
@@ -180,12 +184,12 @@ def main() -> None:
         verdicts = dict(zip(order, pool.map(run, order)))
     rows = [flatten(verdicts[ip], profiles[ip], labels.get(ip, "")) for ip in order]
     rows.sort(key=lambda r: (not r["attention"], -q.CATEGORY_ORDER.index(r["category"]) if r["category"] in q.CATEGORY_ORDER else 1,
-                             -(r["severity"] or 0), -r["requests"]))
+                             -(r["score"] or 0), -r["requests"]))
     if args.verbose:
         for r in rows:
             col = CATEGORY_COLOR.get(r["category"], RED)
-            flag = c(RED, "!! ") if r["attention"] else "   "
-            print(f"{flag}{c(col, r['category']):<28} sev {r['severity']!s:<5} {r['ip']:<40} {r['requests']:>6} req  "
+            flag = c(RED, "attention ") if r["attention"] else "          "
+            print(f"{flag}{c(col, r['category']):<28} {r['score']!s:>5} {r['band']:<11} {r['ip']:<40} {r['requests']:>6} req  "
                   f"{c(DIM, r['signals_text'][:70])}")
             if r.get("error"):
                 print(f"      {c(RED, r['error'][:160])}")
@@ -208,6 +212,7 @@ def main() -> None:
         "agreement": agreement(rows),
     }
     summary["carved_out"] = len(carved)
+    summary["bands"] = dict(Counter(r["band"] for r in rows))
     paths = write_all(out_dir, rows, summary)
     print(summary_table(summary, window))
     print(carve_table(rows, carved))
@@ -249,9 +254,9 @@ def carve_out(out_dir: Path, rows: list[dict], groups: dict[str, list[dict]], sp
     lines = ["# Carved out for investigation", "",
              "Raw canonical rows for every IP whose verdict was " + ", ".join(sorted(wanted)) +
              ", one JSONL per IP, time-sorted, every field the source supplied. Attention rows first.", "",
-             "| IP | Category | Sev | Attention | Requests | Signals | Code signals | File |", "|---|---|---:|---|---:|---|---|---|"]
+             "| IP | Category | Score | Band | Attention | Requests | Signals | Code signals | File |", "|---|---|---:|---|---|---:|---|---|---|"]
     for r in picked:
-        lines.append(f"| {r['ip']} | {r['category']} | {r['severity']} | {'YES' if r['attention'] else ''} | {r['requests']} | "
+        lines.append(f"| {r['ip']} | {r['category']} | {r['score']} | {r['band']} | {'YES' if r['attention'] else ''} | {r['requests']} | "
                      f"{r['signals_text']} | {r['code_signal_names']} | `{r['raw_file']}` |")
     (folder / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return picked
@@ -259,9 +264,11 @@ def carve_out(out_dir: Path, rows: list[dict], groups: dict[str, list[dict]], sp
 
 def summary_table(summary: dict, window: str) -> str:
     cats = list(q.CATEGORIES)
-    head = "| Window | Requests | IPs | " + " | ".join(cats) + " | Attention | Carved out |"
-    sep = "|---|---:|---:|" + "---:|" * len(cats) + "---:|---:|"
+    bands = [b for _, b in q.BANDS]
+    head = "| Window | Requests | IPs | " + " | ".join(cats) + " | " + " | ".join(bands) + " | Attention | Carved out |"
+    sep = "|---|---:|---:|" + "---:|" * (len(cats) + len(bands)) + "---:|---:|"
     row = (f"| {window} | {summary['events']:,} | {summary['ips']:,} | " + " | ".join(str(summary["categories"].get(k, 0)) for k in cats)
+           + " | " + " | ".join(str(summary["bands"].get(b, 0)) for b in bands)
            + f" | {summary['attention']} | {summary['carved_out']} |")
     return "\n".join(["", head, sep, row, ""])
 
@@ -270,11 +277,10 @@ def carve_table(rows: list[dict], carved: list[dict]) -> str:
     shown = [r for r in carved if r["attention"] or r["category"] == "malicious"] or [r for r in rows if r["attention"]]
     if not shown:
         return "No IP needs attention.\n"
-    lines = ["| IP | Category | Sev | Req | Hosts | Signals | Code signals | Top paths | Raw |", "|---|---|---:|---:|---|---|---|---|---|"]
+    lines = ["| IP | Category | Score | Band | Attention | Req | Hosts | Signals | Code signals | Top paths | Raw |", "|---|---|---:|---|---|---:|---|---|---|---|---|"]
     for r in shown:
         paths = "; ".join(l.split(" [")[0] for l in r["paths_text"].split("\n")[:3])
-        flag = "!! " if r["attention"] else ""
-        lines.append(f"| {flag}{r['ip']} | {r['category']} | {r['severity']} | {r['requests']} | {r['hosts_text'][:40]} | "
+        lines.append(f"| {r['ip']} | {r['category']} | {r['score']} | {r['band']} | {'YES' if r['attention'] else ''} | {r['requests']} | {r['hosts_text'][:40]} | "
                      f"{r['signals_text'][:60]} | {r['code_signal_names'][:70]} | {paths[:80]} | {r.get('raw_file', '')} |")
     n_unclear = sum(1 for r in carved if r["category"] == "unclear")
     tail = f"\n{len(shown)} shown; {n_unclear} unclear IPs also carved out to investigate/ (see its README.md).\n" if n_unclear else "\n"

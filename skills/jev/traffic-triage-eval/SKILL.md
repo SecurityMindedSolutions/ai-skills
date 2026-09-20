@@ -20,7 +20,7 @@ allowed-tools:
   - Write
   - Glob
 metadata:
-  summary: "Triages edge-log traffic per client IP with TypeSafe Jev: benign user / benign bot / AI agent / background scan / malicious, with severity, signals and the evidence, from a documented JSON event schema the calling agent fills from any log source"
+  summary: "Triages edge-log traffic per client IP with TypeSafe Jev: benign user / benign bot / AI agent / background scan / malicious, with a 0-100 threat score, the signals and the evidence, from a documented JSON event schema the calling agent fills from any log source"
 ---
 
 # Traffic Triage Eval
@@ -48,10 +48,12 @@ metadata:
    numeric is left for it to do.
 3. **Classify.** `scripts/classify.py` sends each profile with a paragraph
    about the site (`app`) to Jev in one request: a category choice, ten
-   yes/no signals and a 0-3 severity. Code raises the category where it is
-   certain (payloads on real routes, credential volume with WAF evidence,
-   scanner evidence with no app knowledge) and never lowers it. About 3,400
-   tokens, 14 cents per thousand IPs, 330 ms median.
+   yes/no signals and a four-level threat rating. Code turns the answers
+   into a 0-100 threat score with a band (Benign / Nuisance / Concerning /
+   Attack), and raises the category where it is certain (payloads on real
+   routes, credential volume with WAF evidence, scanner evidence with no
+   app knowledge), never lowering it. About 3,500 tokens, 15 cents per
+   thousand IPs, 340 ms median.
 4. **Report and carve out.** `scripts/evaluate.py` runs all of it, prints
    two tables (category counts; the attention and malicious rows with
    their evidence), writes `results.xlsx` (Results, Details, Summary, Read
@@ -76,7 +78,7 @@ Every regex lives in `scripts/signals.py`.
   they will name IPs or a window. Retrieval scope follows from that.
 - **"Triage our WAF / LB logs"**: a window, usually the last day or week.
 - **"Is this scanning or an attack?"**: same run; the answer is in the
-  category, severity and evidence columns.
+  category, score and evidence columns.
 
 Ask for the window or IPs if neither is given. Ask which hosts are theirs if
 the site has several.
@@ -147,8 +149,8 @@ python3 "$SKILL_DIR/scripts/evaluate.py" \
 ```
 
 The run prints a category-count table, a table of the attention and
-malicious rows (IP, severity, hosts, signals, code signals, top paths, raw
-file), the token / cost / latency line, and the agreement table if
+malicious rows (IP, category, score, band, attention, hosts, signals,
+code signals, top paths, raw file), the token / cost / latency line, and the agreement table if
 labelled. `--verbose` adds one line per IP. `--carve` (default
 `malicious,unclear,attention`; `none` to disable) chooses which verdicts
 get their raw rows written to `out/investigate/`.
@@ -163,13 +165,13 @@ every answer.
    sources or projects were run, one row each in one table): window,
    requests, IPs, count per category, attention, carved out.
 2. **The attention table**: every attention and malicious row with IP,
-   category, severity, requests, hosts, signals, code signals, top paths,
+   category, score, band, requests, hosts, signals, code signals, top paths,
    and the `investigate/<ip>.jsonl` file. Under it, two or three sentences
    per attention row: what the IP asked for, how fast, what came back,
    what the WAF did, why it was flagged, and what to check in the raw
    file. Name the paths.
-3. Anything notable outside those rows: a scanning campaign at nuisance
-   severity, a burst of AI agents, a customer's script that looks like a
+3. Anything notable outside those rows: a scanning campaign in the
+   Nuisance band, a burst of AI agents, a customer's script that looks like a
    bot, an IP that is the user's own, a CDN edge standing in for many
    clients.
 4. Tokens, cost and latency in one line; where the spreadsheet and the
@@ -189,9 +191,10 @@ policy and `scripts/signals.py` the whole pattern list; a labelled
 
 | Column | Meaning |
 |---|---|
-| Attention | `YES` when severity is 2+ with confidence or an attack floor fired. Start here. |
+| Attention | `YES` when the score is 50+ and the category is not a benign one, or an attack floor fired. Start here. |
 | Category | `benign_user`, `benign_bot`, `ai_agent`, `background_scan`, `malicious`, `unclear`. Jev's choice, raised by code rules. |
-| Severity (0-3) | Jev's threat score: 0 none, 1 nuisance, 2 concerning, 3 active attack. Ranks rows. |
+| Score (0-100) | Threat score computed in code from Jev's answers (weights in `questions.py`). Ranks rows. |
+| Band | 0-24 Benign, 25-49 Nuisance, 50-74 Concerning, 75-100 Attack. Derived from the score. |
 | Confidence | Jev's confidence in the category choice. Under 0.45 the category is `unclear`. |
 | Signals (Jev) | Yes/no questions at 0.5 or above, strongest first. |
 | Code signals | Facts regex and counting established before Jev was asked: scanner UA, probe families, payload families, WAF denials, spoofed bot identities, bursts. |
@@ -229,7 +232,7 @@ The TypeSafe call is plain `urllib` with backoff on 429/529/5xx.
 **Limits.** Measured with `scripts/limits.py` on 2026-09-19: Jev accepts
 32,653 total input tokens and refuses ~40k with `max_tokens_exceeded`; the
 app paragraph and questions cost ~3,500 of that, so a profile may reach
-~28k. Category and severity did not move between 4k and 32k. The default
+~28k. Category and threat rating did not move between 4k and 32k. The default
 profile budget is 6k tokens and real profiles run 500-2,000; sample lists
 are halved until a profile fits. Full numbers and the validation history
 are in `references/methodology.md`.

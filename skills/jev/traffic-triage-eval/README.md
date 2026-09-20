@@ -1,208 +1,205 @@
 # Traffic Triage Eval
 
-Answer "who was hitting us, and does it matter?" from edge logs. Every
-client IP in a load-balancer or WAF export gets one row: benign user,
-benign bot, AI agent, internet background scanning, or malicious, with a
-0-3 severity, the signals behind it, and the paths, so a person can read
-the top of the sheet and know where to look.
+Per-IP triage of edge logs. Every client IP in a load-balancer or WAF export
+gets a category (who it is), a 0-100 threat score with a band (how much it
+matters), the signals behind both, and its raw rows carved out if it needs a
+look. Built on TypeSafe's Jev; code does the counting, Jev does the judgment.
 
-**Contents**
-
-- [Disclaimer](#disclaimer)
-- [How this is different](#how-this-is-different)
-- [What it does](#what-it-does)
-- [The contract: you retrieve, it classifies](#the-contract-you-retrieve-it-classifies)
-- [The categories](#the-categories)
-- [Results on the mock set](#results-on-the-mock-set)
-- [Results on real logs](#results-on-real-logs)
-- [Token limits, measured](#token-limits-measured)
-- [Cost and time](#cost-and-time)
-- [How to use it](#how-to-use-it)
-- [What it gets wrong](#what-it-gets-wrong)
-- [Files](#files)
-
-## Disclaimer
-
-Research proof of concept, built to test one idea: whether TypeSafe's Jev
-can turn a code-computed summary of an IP's requests into a useful triage
-category. It produces a category, a severity and evidence; it does not
-produce incident findings. `malicious` means "read these requests", not
-"block this address"; `benign_user` means "nothing stood out", not
-"verified human". Verify against the raw log before acting. Provided as is,
-without warranty. Everything in `mock-data/` is fictional.
-
-## How this is different
-
-| Approach | What it is | The problem |
-|---|---|---|
-| **Reading the log** | Sort by IP, eyeball the paths | Works, does not scale past a few hundred IPs a day, and every reader has a different threshold for "that looks bad". |
-| **WAF verdicts** | Trust `deny` / `throttle` | The WAF only sees what its rules name. It says nothing about enumeration, slow recon, spoofed crawlers, or the 95% of traffic it allowed. |
-| **A rule engine** | Regexes for scanner UAs and probe paths, thresholds on 404 rate and req/min | This skill has all of that in `signals.py` and `profile.py`. What rules cannot do is say whether a path set "knows this app", whether a User-Agent is plausible, or whether a pattern reads as a monitor. |
-| **Asking an LLM** | Paste the log slice into a chat model | Expensive per IP, slow, non-deterministic, and a User-Agent string can argue with it. |
-| **Asking Jev (this skill)** | Code computes the profile; Jev answers twelve typed questions about it in one call | Calibrated numbers, 330 ms, a fraction of a cent, same profile same answer. The judgments are narrow; the numbers stay in code. |
-
-**You need a TypeSafe account.** Sign up at [typesafe.ai](https://typesafe.ai),
-then create an API key at [console.typesafe.ai/keys](https://console.typesafe.ai/keys).
+> Research proof of concept. A triage signal, not a detection: `malicious`
+> means read the requests, not block the address; `benign_user` means
+> nothing stood out. Verify in the raw rows before acting. Everything in
+> `mock-data/` is fictional.
 
 ## What it does
 
-1. **Validate** the staged events against the schema: required fields,
-   types, IP syntax, timestamp formats, WAF-action aliases. Prints drop
-   reasons and a coverage table of the optional fields.
-2. **Profile** each IP in code: request count, span, peak per minute,
-   median gap, status mix, 404 rate, WAF verdicts, distinct hosts and paths,
-   User-Agent classes, static-asset fraction, referer presence, auth-endpoint
-   hits, enumeration templates (path segments and query parameters), probe
+1. **Validate** a JSONL export in one documented schema
+   ([`references/schema.md`](references/schema.md)). Required: `ts`, `ip`,
+   `method`, `path`. Optional and worth sending: `status`, `host`, `query`,
+   `ua`, `referer`, `waf_action`, `waf_rule`, `waf_labels`, `asn`, `country`,
+   `ja3`/`ja4`. The validator prints which fields are populated. WAF-only
+   exports with no response status are fine.
+2. **Profile each IP in code**: counts, time span, peak per minute, status
+   mix, WAF verdicts and labels, hosts, User-Agent classes, probe-path
    families, payload families, route templates, directory and extension
-   rollups, a coverage sentence, and short samples with the sample slots
-   spent on paths no rule already described. Every number gets a word
-   bucket, because Jev judges words better than magnitudes.
-3. **Classify** with one Jev request per IP: a category choice, ten yes/no
-   signals, a 0-3 severity. Code raises the category where it is certain and
-   never lowers it.
-4. **Report** as two tables on the console (category counts; attention and
-   malicious rows with evidence) and to `results.xlsx` / `.csv` / `.json`,
-   attention rows first, with agreement metrics when labels are given.
-5. **Carve out** the raw rows of every IP that is malicious, unclear or
-   flagged to `out/investigate/<ip>.jsonl` with an index, so the follow-up
-   investigation starts from the run directory and never re-queries the
-   log source.
+   rollups, enumeration templates, and short samples of what the rules did
+   not already describe.
+3. **Ask Jev** one request per IP: a category choice, ten yes/no signals,
+   and a four-level threat rating, all judged against a paragraph describing
+   the site.
+4. **Score and decide in code**: a 0-100 score, a band, the category with
+   code-certain floors applied, and an attention flag.
+5. **Report**: two console tables, `results.xlsx` / `.csv` / `.json`, and
+   `investigate/<ip>.jsonl` for every malicious, unclear or flagged IP so the
+   follow-up never re-queries the log source.
 
-## The contract: you retrieve, it classifies
+The retrieving agent gets the logs into the schema however the environment
+allows (CLI, MCP, Athena, SIEM export). The skill does not fetch logs.
 
-The skill does not pull logs and does not say how to. The calling agent
-works that out with the user (a cloud CLI, an MCP server, Athena, a SIEM
-export, a file) and writes one JSON line per request in the schema in
-[`references/schema.md`](references/schema.md). Four fields are required
-(`ts`, `ip`, `method`, `path`); status, host, query, User-Agent, referer,
-WAF action, rule and labels, ASN, country, JA3/JA4, sizes, latency and
-target add signals. A WAF-only export with no response status is fine;
-the profile says what it cannot see and the verdicts, labels, paths and
-pacing carry the judgment. The schema page carries a field-source table for GCLB, ALB and AWS
-WAF. The agent also writes one paragraph about the site, which is what
-"knows this application" is judged against.
+## What the output looks like
 
-## The categories
+The mock set: one synthetic day, 33 labelled IPs. Summary table:
 
-| Category | Means | Typical evidence |
+| Requests | IPs | malicious | background_scan | ai_agent | benign_bot | benign_user | unclear | Benign | Nuisance | Concerning | Attack | Attention |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 3,689 | 33 | 9 | 7 | 5 | 8 | 3 | 1 | 16 | 8 | 2 | 7 | 9 |
+
+A selection of rows (the run prints attention and malicious rows; the sheet
+has every IP):
+
+| IP | Category | Score | Band | Attention | Req | Signals | Code signals | Top paths |
+|---|---|---:|---|---|---:|---|---|---|
+| 194.26.29.4 | malicious | 87.7 | Attack | YES | 60 | exploit_payloads, app_aware, enumeration | payloads, waf_denied, enumeration | 22x /api/v1/trust/documents; 20x /api/v1/tenants/acme/documents |
+| 103.99.1.7 | malicious | 76.6 | Attack | YES | 300 | automated, app_aware, enumeration | ua_script, enumeration | 300x /api/v1/trust/pages |
+| 5.188.86.2 | malicious | 73.8 | Concerning | YES | 420 | credential_attack, app_aware, automated | waf_throttled, auth_volume, burst | 420x /api/v1/auth/signin-password |
+| 89.248.165.2 | malicious | 68.8 | Concerning | YES | 46 | app_aware, enumeration | enumeration | 1x /; 1x /api/v1/auth/user_info |
+| 45.155.205.10 | background_scan | 25.7 | Nuisance | | 18 | generic_probing, wrong_host, scanner_tool | probe_paths, raw_ip_host | 2x /wp-login.php; 2x /xmlrpc.php |
+| 87.120.104.29 | background_scan | 25.8 | Nuisance | | 30 | wrong_host, automated | waf_denied | 30x / |
+| 20.171.207.1 | ai_agent | 20.1 | Benign | | 80 | ai_operated, declared_bot | ua_ai_agent | 21x /acme/faq; 17x /acme/documents |
+| 44.201.1.9 | ai_agent | 24.0 | Benign | | 21 | ai_operated, declared_bot | ua_ai_agent | 18x /mcp; 1x /api/v1/auth/oauth/register |
+| 66.249.66.1 | benign_bot | 14.4 | Benign | | 60 | declared_bot, automated | ua_crawler | 13x /api/v1/trust/pages; 11x /acme |
+| 216.144.248.20 | benign_bot | 7.2 | Benign | | 1440 | monitoring, declared_bot | ua_monitor | 1440x / |
+| 203.0.113.10 | benign_user | 22.8 | Benign | | 56 | app_aware | | 6x /; 6x /assets/index-8f2a1c.js |
+| 198.18.0.1 | unclear | 7.0 | Benign | | 1 | app_aware | | 1x / |
+
+Columns: **Category** is who. **Score** and **Band** are how much it matters.
+**Attention** is the read-first flag. **Signals** are Jev's yes/no answers at
+0.5 or above. **Code signals** are what regex and counting established before
+Jev was asked. The Details sheet adds every probability, the category
+distribution, the rule reasons, tokens and latency.
+
+## Categories and bands
+
+| Category | Means |
+|---|---|
+| `benign_user` | A person in a browser or the product's own client |
+| `benign_bot` | Declared, well-behaved automation: crawlers, monitors, schedulers, a customer's script on entitled routes |
+| `ai_agent` | AI crawler or agent: GPTBot, ClaudeBot, Claude-User, ChatGPT-User, PerplexityBot, an MCP client, a browsing agent |
+| `background_scan` | Internet scanning: `.env`, `.git`, `/proc/self/environ`, WordPress, PHP, backups, raw-IP hosts, mass exploit sprays. No knowledge of this application, however many hosts or User-Agents it uses |
+| `malicious` | An attack on this application: payloads on real routes, credential attempts on real auth endpoints, enumeration of real ids, recon of real routes |
+| `unclear` | Too little evidence, or a spread distribution |
+
+| Band | Score | Means |
 |---|---|---|
-| `benign_user` | A person in a browser or the product's own client | Browser UA, page loads with assets and referers, human pacing, 2xx |
-| `benign_bot` | Well-behaved automation | One consistent named UA, fixed paths at a fixed interval, or a customer's script hitting entitled routes with 2xx |
-| `ai_agent` | AI assistant, LLM crawler or agent | GPTBot, ClaudeBot, Claude-User, ChatGPT-User, PerplexityBot, an MCP client, a headless browsing agent |
-| `background_scan` | Internet background noise | Probes for absent software, raw-IP host, mass exploit sprays; no knowledge of this app's hosts, routes or parameters |
-| `malicious` | Malicious scanning or attack on this app | Payloads against real routes, credential attempts on real auth endpoints, enumeration of real ids, recon of real routes, identity-rotating campaigns |
-| `unclear` | Not enough evidence | 1-2 ordinary requests, or a spread distribution |
+| Benign | 0-24 | Ordinary use, declared bots, monitors |
+| Nuisance | 25-49 | Scanning for things this site does not have, all rejected |
+| Concerning | 50-74 | Recon of real endpoints, sign-in attempts, WAF denials on real routes, enumeration |
+| Attack | 75-100 | Payloads against real endpoints, credential attacks at volume, enumeration returning successes |
 
 The line between `background_scan` and `malicious` is knowledge of this
-application. Both can carry exploit strings; only one knows where it is.
-Severity carries the rest, and **attention** (the `!!` rows) is severity 2+
-with confidence or a code floor firing.
+application. Both can carry exploit strings.
 
-## Results on the mock set
+## Methodology
 
-3,689 requests, 33 labelled IPs, one synthetic day. Personas cover, inside
-`malicious`: SQL injection, XSS, path traversal, SSRF, JNDI/log4shell,
-command injection, template injection, insecure deserialization, credential
-stuffing, OAuth client-registration abuse, tenant enumeration (IDOR), a
-nuclei run against the real API, and slow low-and-slow recon. Hard
-negatives: a curious `/admin` click, a typo 404, a curl user reading
-`security.txt`, a sign-in with an MFA retry, a customer's cron script.
+**Code counts, Jev judges.** Jev's documented weak spots are counting,
+arithmetic, dates, and large states full of irrelevant detail. Edge logs are
+all of those. So `profile.py` reduces an IP's rows to a compact profile with
+every number computed in code and every number paired with a sentence
+("hundreds of requests over about 3 hours, in aggressive bursts"), and
+`signals.py` turns every regex hit (scanner UA, probe family, payload family,
+WAF label family) into a named fact. Jev never has to spot a string, only
+weigh what the facts mean for the site described in `app.md`.
 
-| | |
-|---|---|
-| Malicious IPs given attention | 9 of 9 |
-| Benign IPs given attention | 0 |
-| Exact category agreement | 0.94-0.97 across runs (the curl user sits on the benign_user / benign_bot line) |
-| Disagreements | curl user -> `benign_bot`; one-request IP -> `unclear` (label says `unclear`, counted as a hit) |
+**Questions** (`questions.py`, the whole policy in one file): one Choice for
+the category; Nouls for generic probing, app-aware, exploit payloads,
+credential attack, enumeration, automated, declared bot, AI-operated,
+monitoring, wrong host, scanner tool; one Score for the threat rating
+(Benign / Nuisance / Concerning / Attack). One request per IP, ~3,500 tokens.
 
-## Results on real logs
+**Score** = 100 × (0.45 × rating/3 + 0.35 × strongest_vector × (0.25 + 0.75 ×
+app_aware) + 0.10 × app_aware + 0.10 × scanning_pressure), where
+strongest_vector = max(exploit_payloads, credential_attack, enumeration) and
+scanning_pressure = max(scanner_tool, generic_probing, wrong_host). The
+vectors enter as a max because they are mostly mutually exclusive and an
+average hides a single-vector attack. The app-knowledge gate is why a `../`
+sprayed at the raw IP scores about 45 and the same payload on a real route
+scores about 85.
 
-Two days of GCP HTTP(S) load balancer request logs from three projects,
-~42,000 requests, ~1,900 IPs, September 2026. What the first pass got wrong
-and what changed is in [`references/methodology.md`](references/methodology.md);
-the short version:
+**Floors** (code raises the category, never lowers it): payloads or WAF
+attack labels on routes that exist here; credential-attack volume with WAF
+evidence on real auth endpoints; scanner UA, probe paths or wrong host with
+no app knowledge. Low choice confidence becomes `unclear` unless the split is
+between the two benign classes. Fewer than three requests with no code signal
+is `unclear`.
 
-- The operator's own IP was flagged (an app route matched an admin-panel
-  regex; cache-busters looked like enumeration). Fixed in the regexes.
-- WordPress scanners read as a credential attack because `wp-login.php`
-  404s counted as auth hits. Fixed: auth hits exclude 404s, and the
-  credential floor requires app-awareness.
-- A six-IP campaign rotated through 33 User-Agents, 21 of them spoofed AI
-  crawler names. New code signal `ua_spoofed_bots`; the bot questions now
-  say rotation means fake.
-- Mass exploit sprays at the raw LB IP came out as attacks at nuisance
-  severity. The category criteria now hinge on app knowledge; attention
-  hinges on severity.
+**Attention** = score ≥ 50 with a non-benign category, or a floor fired.
 
-After the changes, one project's attention list is exactly that campaign,
-one project has a single "check that `/.git/config` 200 is the SPA shell"
-row, and one has nothing.
-
-## Token limits, measured
-
-`scripts/limits.py` grows one IP's profile until Jev refuses it and records
-what moves.
-
-| | |
-|---|---|
-| Hard limit | 32,653 total input tokens accepted; ~40k refused with `HTTP 400 max_tokens_exceeded` |
-| Fixed overhead | ~3,500 tokens: the app paragraph plus the 12 questions |
-| Usable profile | up to ~28k tokens; default budget 6k; real profiles 500-3,500 |
-| Drift with size | none in category or severity from 4k to 32k; one signal moved 0.2 |
-| Tokenizer | profile JSON runs 1.5-2.9 chars/token; the estimator assumes 1.5 |
-
-Raw log volume never reaches the API: a million rows is a local CPU cost.
+**Calibration.** The mock set covers, inside `malicious`: SQLi, XSS,
+traversal, SSRF, JNDI, command and template injection, deserialization,
+credential stuffing, OAuth registration abuse, tenant enumeration, a nuclei
+run, slow recon; plus scanners, AI agents, bots, and hard-negative users (a
+curious `/admin` click, a typo 404, a curl user reading `security.txt`, an
+MFA retry). Result: malicious personas score 69-88, every benign IP 40 or
+below, scanners 26-31, 9/9 attackers flagged, 0 benign flagged. Two days of
+real GCP load-balancer logs from three projects (~42k requests, ~1,900 IPs)
+drove the regex and criteria fixes recorded in
+[`references/methodology.md`](references/methodology.md).
 
 ## Cost and time
 
 | | |
 |---|---|
-| Tokens per IP | ~3,400 median, ~7,100 max on real logs |
-| Cost | ~$0.14 per 1,000 IPs at $0.042/Mtok; output tokens free |
-| Latency | ~330 ms median per IP; 8 workers clear 600 IPs in about 30 s |
+| Tokens per IP | ~3,500 median, ~7,300 max |
+| Cost | ~$0.15 per 1,000 IPs at $0.042/Mtok; output tokens free |
+| Latency | ~340 ms per IP; 8 workers clear 1,000 IPs in about a minute |
+| Jev limit | 32k tokens per request (measured: 32,653 accepted, ~36k refused); profiles use 1-8% of it |
+| Local | Aggregation is CPU-only; 42k rows profile in under 5 s |
 
 ## How to use it
 
 ```bash
-# 1. stage events.jsonl (schema in references/schema.md) and app.md
+# 1. stage events.jsonl (references/schema.md) and app.md (one paragraph: hosts, routes, what the site does NOT run)
 # 2. validate
 python3 scripts/validate.py --events events.jsonl
-# 3. dry run: profiles + token estimates, no API calls
+# 3. profile only, no API calls
 python3 scripts/evaluate.py --events events.jsonl --app app.md --dry-run
-# 4. run; --ip / --from / --to / --min-requests / --labels / --workers as needed
+# 4. run
 python3 scripts/evaluate.py --events events.jsonl --app app.md --out ./out
-# one IP, full detail
+#    --ip A --ip B        only these IPs
+#    --from / --to        ISO 8601 window inside the file
+#    --min-requests N     skip one-hit IPs
+#    --labels labels.csv  ip,label for agreement scoring
+#    --carve ...          which verdicts get raw rows in out/investigate/ (default malicious,unclear,attention)
+# one IP with the full profile and every answer
 python3 scripts/classify.py --events events.jsonl --ip 1.2.3.4 --app app.md
-# measure the size limit on your own data
+# grow a profile until Jev refuses it
 python3 scripts/limits.py --events events.jsonl --app app.md
 ```
 
+Needs Python 3.10+ and a TypeSafe key (`TYPESAFE_API_KEY` or
+`~/.config/typesafe/env`). First run creates a private venv for openpyxl.
+
+`app.md` matters: "knows this application" is judged against it. Name the
+hostnames, the route families, the health checks, and what the site does not
+run (WordPress, PHP, `/admin`). Say if static buckets return 200 for unknown
+paths.
+
 ## What it gets wrong
 
-- No reverse-DNS check: a UA claiming Googlebot is believed unless the IP
-  rotates identities.
-- Behind SPA fallbacks a 200 on `/.git/config` is the shell, not the file;
-  the `app` paragraph has to say so and Jev may still flag it.
-- One IP is one actor: NAT and CDN origins merge many.
-- The regexes are lists; a new scanner is invisible until added.
-- Jev can be steered by crafted state; the code floors keep a payload on a
-  real route malicious whatever the UA says.
+- **No reverse-DNS.** A UA claiming Googlebot is believed unless the IP
+  rotates identities (`ua_spoofed_bots`).
+- **One IP is one actor.** NAT and CDN edges merge many clients; a Cloudflare
+  edge IP in front of an origin will score as one scanner.
+- **SPA fallbacks.** A bucket that serves the shell for any path makes 404
+  rate meaningless there; the probe-family regexes carry the weight.
+- **Regexes are lists.** A new scanner UA or probe family is invisible until
+  added to `signals.py`. The `unclear` and `benign_bot` rows are where to look.
+- **Threshold rows flip.** An IP scoring 49 one run and 51 the next is the
+  threshold, not noise; Jev's answers are stable to about a hundredth.
+- **Crafted state can move Jev.** A UA string written to argue for its own
+  classification can shift an answer; the floors keep a payload on a real
+  route malicious whatever the UA says.
 
 ## Files
 
 | File | What it is |
 |---|---|
 | `SKILL.md` | Agent instructions |
-| `references/schema.md` | The event schema: the contract with whoever retrieves the logs |
-| `references/methodology.md` | Design, categories, validation history, measured limits |
-| `scripts/schema.py` | Field definitions and row normalization |
-| `scripts/validate.py` | File reader, filters, coverage report |
-| `scripts/signals.py` | Every regex: UA classes, probe families, payload families |
+| `references/schema.md` | The event schema, with a field-source table for GCLB, ALB and AWS WAF |
+| `references/methodology.md` | Design detail, validation history, measured limits |
+| `scripts/questions.py` | Categories, questions, weights, bands, thresholds, floors |
+| `scripts/signals.py` | Every regex: UA classes, probe families, payload families, WAF label families |
 | `scripts/profile.py` | Per-IP aggregation and token-budget trimming |
-| `scripts/questions.py` | Categories, Jev questions, thresholds, rules |
-| `scripts/classify.py` | One IP through Jev, verdict composition |
-| `scripts/evaluate.py` | The run: validate, profile, classify, report |
-| `scripts/report.py` | xlsx / csv / json writer |
-| `scripts/limits.py` | Grows a profile until Jev refuses it; records drift |
-| `scripts/jev.py`, `scripts/bootstrap.py` | HTTP client with backoff; venv bootstrap |
+| `scripts/classify.py` | One IP through Jev; score, band, verdict |
+| `scripts/evaluate.py` | The run: validate, profile, classify, report, carve out |
+| `scripts/validate.py`, `schema.py`, `report.py`, `limits.py`, `jev.py`, `bootstrap.py` | Validator, schema, xlsx writer, size probe, HTTP client, venv bootstrap |
 | `mock-data/` | `generate.py`, `events.jsonl`, `labels.csv`, `app.md`, `example-output/` |

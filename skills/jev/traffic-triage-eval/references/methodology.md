@@ -27,8 +27,8 @@ detail, so the design is:
 3. **`questions.py`** asks Jev one Choice (the category), ten Nouls (generic
    probing, app-aware, exploit payloads, credential attack, enumeration,
    automated, declared bot, AI-operated, monitoring, wrong host, scanner
-   tool) and one Score (threat severity 0-3), all over the same state in one
-   request. The state is `{"app": ..., "window": ..., "profile": ...}`.
+   tool) and one Score (a four-level threat rating: Benign, Nuisance,
+   Concerning, Attack), all over the same state in one request. The state is `{"app": ..., "window": ..., "profile": ...}`.
 4. **`classify.py`** composes the verdict. The category is Jev's choice,
    raised (never lowered) by floors where code is certain: exploit payloads
    or WAF attack-signature labels plus app-awareness, credential-attack
@@ -36,7 +36,12 @@ detail, so the design is:
    evidence with no app-awareness. A choice under the confidence gate
    becomes `unclear`, unless the probability is merely split between
    `benign_user` and `benign_bot` (harmless either way, the top one stands);
-   fewer than three requests with no code signal becomes `unclear`. **Attention** (the rows a
+   fewer than three requests with no code signal becomes `unclear`. One
+   rule lowers: a `malicious` choice with no app-awareness and no
+   credential or enumeration pattern becomes `background_scan`, because
+   malicious means an attack on this application, and a mass exploit spray
+   that does not know the application is scanning however many hosts,
+   payload strings or User-Agents it uses. **Attention** (the rows a
    person reads first) is severity >= 2 with confidence, or an attack floor
    firing.
 
@@ -73,11 +78,21 @@ cannot work that out from the numbers itself.
 | `unclear` | Not enough evidence | 1-2 ordinary requests, or a spread distribution |
 
 The line between `background_scan` and `malicious` is **knowledge of this
-application**, and severity carries the rest. A `/cgi-bin/../bin/sh` probe
-at the raw LB IP is noise at severity 1; the same payload against
-`/api/v1/tenants/acme/documents` on the real hostname is malicious at
-severity 3. Both categories can carry exploit strings; only one knows where
-it is.
+application**, and the score carries the rest. A `/cgi-bin/../bin/sh` probe
+at the raw LB IP is noise in the Nuisance band; the same payload against
+`/api/v1/tenants/acme/documents` on the real hostname is malicious in the
+Attack band. Both categories can carry exploit strings; only one knows where
+it is. Requests for `.env`, `.git/config`, `/proc/self/environ`,
+`/etc/passwd`, backups and admin panels are scanning for other people's
+misconfigurations, not an attack on this app, and stay `background_scan`
+however many hosts they hit and however many User-Agents they rotate
+through. Requests for `.env`, `.git/config`, `/proc/self/environ`,
+`/etc/passwd`, backups and admin panels are scanning for other people's
+misconfigurations, not an attack on this app, and stay `background_scan`
+however many hosts they hit and however many User-Agents they rotate
+through (a 2026-09-19 recalibration: the first version read the
+`/proc/self/environ` path as a traversal payload and identity rotation as
+malicious, and flagged a six-IP `.env` campaign as an attack).
 
 ## What was validated (2026-09-19)
 
@@ -114,13 +129,25 @@ bot.
   the `declared_bot` / `ai_operated` criteria now say rotation means fake.
 - Mass exploit sprays at the raw LB IP (the CVE-2021-41773 `cgi-bin` probe,
   `.aws/credentials`, `.anthropic/config.json`) were all coming out as
-  `targeted_attack` at severity ~1.0 once payloads were in the criteria. Fix:
-  the category was renamed `malicious`, "knows this application" became the
-  dividing line in the criteria, and attention became severity-driven.
+  `targeted_attack` once payloads were in the criteria. Fix: the category
+  was renamed `malicious`, "knows this application" became the dividing
+  line in the criteria, and attention became score-driven.
+- A six-IP `.env` / `/proc/self/environ` campaign with 33 rotating
+  User-Agents was flagged as an attack. Two causes: the traversal regex
+  matched the bare `/proc/self/environ` path (a secrets-file probe, not a
+  payload), and "rotates identities" had been written into the malicious
+  criteria. Fix: a `secrets_files` probe family, traversal limited to
+  dot-dot sequences, and the criteria rewritten so that scanning for other
+  people's misconfigurations stays scanning however it is delivered.
+- Jev's four-level rating was first reported as a decimal expectation
+  ("2.34"), then as a level with a probability ("Concerning (58%)"); both
+  read as precision that was not there. Replaced by the 0-100 score and
+  bands above, calibrated on the mock labels: malicious personas score
+  69-88, everything benign 40 or below, scanners 26-31.
 - Static buckets return 200 with the SPA shell for any path, so a 200 on
   `/.git/config` means nothing there; the `app` paragraph has to say so. It
-  still produced one attention row (2 requests, severity 2.2), which is a
-  reasonable "go check" rather than a false alarm.
+  still produced one attention row (2 requests) in an early run, which is
+  a reasonable "go check" rather than a false alarm.
 
 After those changes: one project flagged the six-IP campaign and nothing
 else, one flagged the `.git/config` pair, one flagged nothing.
@@ -132,8 +159,8 @@ else, one flagged the `.git/config` pair, one flagged nothing.
 | Hard limit | 32,653 total input tokens accepted; ~40k refused with `HTTP 400 max_tokens_exceeded`. Matches the documented 32k state + longest question. |
 | Fixed overhead | ~3,500 tokens per request for the app paragraph plus the 12 questions |
 | Profile budget | Up to ~28k tokens possible; default 6k |
-| Typical profile | 500-3,500 tokens; ~3,400 total per IP median on real logs, max ~7,100 |
-| Drift with size | Category and severity unchanged from 4k to 32k on the probe IP; one Noul moved 0.2 |
+| Typical profile | 500-3,500 tokens; ~3,500 total per IP median on real logs, max ~7,300 |
+| Drift with size | Category and threat rating unchanged from 4k to 32k on the probe IP; one Noul moved 0.2 |
 | Tokenization | Profile JSON runs 1.5-2.9 chars per token (slashes, hex ids, punctuation); the estimator uses 1.5 |
 | Cost | ~$0.14 per 1,000 IPs at $0.042/Mtok; output tokens are free |
 | Latency | ~330 ms median per IP; 8 workers clear 600 IPs in about half a minute |

@@ -26,7 +26,7 @@ import time
 from pathlib import Path
 
 import questions as q
-from classify import DEFAULT_APP, _get_client, signals_from
+from classify import DEFAULT_APP, _get_client, band_for, signals_from, threat_score
 from profile import DEFAULT_SAMPLES, build_profile, estimate_tokens, group_by_ip, render
 
 STEPS = [0.5, 1, 2, 4, 8, 16]            # multipliers on DEFAULT_SAMPLES
@@ -69,7 +69,7 @@ def main() -> None:
         row = {"step": label, "estimated_tokens": est, "input_tokens": resp["usage"]["input_tokens"],
                "ratio_real_to_est": round(resp["usage"]["input_tokens"] / est, 2), "latency_ms": ms,
                "category": s["traffic_class"], "category_confidence": s["traffic_class_confidence"],
-               "severity": s["threat_severity"],
+               "score": threat_score(s), "band": band_for(threat_score(s)),
                "signals": {k: s[k] for k, spec in q.QUESTIONS.items() if spec["type"] == "noul"}}
         drift = ""
         if baseline:
@@ -78,7 +78,7 @@ def main() -> None:
             drift = (RED if cat_changed else YELLOW if moved else GREEN) + \
                     (f"category changed to {row['category']}" if cat_changed else f"moved: {', '.join(moved) or 'none'}") + OFF
         print(f"{label:<26} est {est:>6}  real {row['input_tokens']:>6} (x{row['ratio_real_to_est']})  {ms:>5} ms  "
-              f"{row['category']:<16} sev {row['severity']:<4} {drift}")
+              f"{row['category']:<16} {row['score']!s:>5} {row['band']:<11} {drift}")
         return row
 
     for mult in STEPS:

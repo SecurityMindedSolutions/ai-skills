@@ -30,7 +30,7 @@ only the index.
 |---|---|---|
 | `resume-mirror-eval` | Scores a batch of resumes against a job description for how closely their wording mirrors the posting, flags the ones a human should read, and writes a sortable spreadsheet with evidence bullets and optional review notes. About a cent and ten seconds per hundred resumes. | [README](resume-mirror-eval/README.md) |
 | `prompt-injection-eval` | Scores prompts for injection before they reach your LLM and returns allow / review / block with a risk score and reasons; a reference gate a backend can call, plus an evaluator that measures Jev against a regex list and an LLM judge on labelled prompts. About 300 ms and 7 cents per thousand prompts. | [README](prompt-injection-eval/README.md) |
-| `traffic-triage-eval` | Triages edge-log traffic (GCP LB, AWS ALB / WAF, CloudFront, nginx) per client IP as benign user, benign bot, AI agent, background scanning or malicious, with a severity, the signals and the paths, from a documented JSON event schema the agent fills from any log source. About 330 ms and 14 cents per thousand IPs. | [README](traffic-triage-eval/README.md) |
+| `traffic-triage-eval` | Triages edge-log traffic (GCP LB, AWS ALB / WAF, CloudFront, nginx) per client IP as benign user, benign bot, AI agent, background scanning or malicious, with a 0-100 threat score, the signals and the paths, and carves out the raw rows of anything worth a look, from a documented JSON event schema the agent fills from any log source. About 340 ms and 15 cents per thousand IPs. | [README](traffic-triage-eval/README.md) |
 
 ## Install
 

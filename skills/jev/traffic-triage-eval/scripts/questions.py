@@ -15,8 +15,8 @@ CATEGORIES = {
     "benign_user": "A person using a web browser or the product's own client, doing ordinary things: page loads with their assets, a sign-in with at most a retry or two, the occasional typo or 404.",
     "benign_bot": "A well-behaved automated client: a search-engine crawler, an uptime or health monitor, a link-preview fetcher, a feed reader, the operator's own scheduler, or a customer's scripted integration that calls the routes it is entitled to and gets successes.",
     "ai_agent": "An AI assistant or LLM-driven agent or crawler (GPTBot, ClaudeBot, PerplexityBot, an MCP client, a browsing agent). Not malicious by itself; reported separately so the operator can decide.",
-    "background_scan": "Internet background noise: the same probes every host on the internet receives, sprayed at the server by raw IP or at software this site does not run (WordPress, PHP, .env files, old CVEs), even when a probe carries an exploit string. It shows no knowledge of this application: not its hostnames, not its routes, not its parameters.",
-    "malicious": "Malicious scanning or an attack on this application: exploit payloads (injection, traversal, SSRF, JNDI, serialized objects) against routes that exist here, repeated sign-in or token attempts against its real auth endpoints, enumeration of its ids or tenants, persistent recon of its real routes on its real hostnames, or a scanning campaign that rotates through many identities to evade blocking.",
+    "background_scan": "Scanning: the same probes every host on the internet receives. Requests for .env, .git, config, backup and secrets files (/proc/self/environ, /etc/passwd), admin panels, WordPress, PHP, Java consoles, old CVEs, sprayed at the raw IP or at the site's hostnames, however many hosts it tries and however many User-Agents it rotates through. Even when a probe carries an exploit string, it shows no knowledge of this application: not its routes, not its parameters, not its auth endpoints.",
+    "malicious": "Malicious: an attack on this application specifically. Exploit payloads (injection, traversal sequences, SSRF, JNDI, serialized objects) placed in the parameters or paths of routes `app` says exist here, repeated sign-in or token attempts against its real auth endpoints, enumeration of its ids, tenants or documents, or persistent recon of its real routes. The test is knowledge of this application, not the volume or the identities used.",
     "unclear": "Too little traffic or evidence to say.",
 }
 
@@ -40,7 +40,7 @@ QUESTIONS = {
             "serve, the way an internet-wide scanner tries the same list on every host?"
         ),
         "criteria": {
-            "true": "Requests for WordPress, PHP admin tools, .env or .git files, Java consoles, other CMSs, backup archives or similar, on a site that `app` says is none of those.",
+            "true": "Requests for WordPress, PHP admin tools, .env or .git files, /proc/self/environ or /etc/passwd, Java consoles, other CMSs, backup archives or similar, on a site that `app` says is none of those.",
             "false": "Requests are for things this site actually serves, or there are no such probe paths.",
         },
     },
@@ -64,7 +64,7 @@ QUESTIONS = {
             "lookups, server-side request forgery targets, serialized objects, or scanner callback markers?"
         ),
         "criteria": {
-            "true": "At least one request carries such a string in its path or query, or the WAF labelled it with an attack signature.",
+            "true": "At least one request carries such a string in its path or query, or the WAF labelled it with an attack signature. A bare request for a secrets file such as /proc/self/environ or /.env is probing, not a payload.",
             "false": "Paths and queries are ordinary parameters and values; `profile.payloads.summary` says none and the WAF attached no attack labels.",
         },
     },
@@ -170,10 +170,10 @@ QUESTIONS = {
             "threat does this IP's activity represent to this application?"
         ),
         "criteria": [
-            "None. Ordinary use, a declared bot, or a monitor.",
-            "Nuisance. Background scanning for software this site does not run, including mass exploit attempts sprayed at the raw IP, all rejected; or an AI crawler reading public pages. No sign it knows this application.",
-            "Concerning. Recon of endpoints that exist here on its real hostnames, repeated authentication attempts, WAF denials on real routes, enumeration of ids, or a scanning campaign rotating identities across this site's hosts, without a clear successful exploit.",
-            "Active attack. Exploit payloads against real endpoints, credential attacks at volume, or enumeration that is returning successes.",
+            "Benign. Ordinary use, a declared bot, or a monitor.",
+            "Nuisance. Scanning for software or secrets files this site does not have (.env, .git, /proc/self/environ, WordPress, PHP), including mass exploit sprays, across any number of hosts and with any number of User-Agents, all rejected; or an AI crawler reading public pages. No sign it knows this application.",
+            "Concerning. Recon of endpoints that exist here, repeated authentication attempts against real auth routes, WAF denials on real routes, or enumeration of real ids, without a clear successful exploit.",
+            "Attack. Exploit payloads against real endpoints, credential attacks at volume, or enumeration that is returning successes.",
         ],
     },
 }
@@ -186,16 +186,47 @@ CHOICE_MIN_CONFIDENCE = 0.45  # below this the category is reported as unclear +
 # one stands when the harmless classes together hold at least this much.
 HARMLESS = ("benign_user", "benign_bot")
 HARMLESS_SPLIT_OK = 0.8
-# Attention (the `!!` rows) is severity-driven: a `malicious` verdict at
-# nuisance severity is still listed and colored, but a human reads the
-# attention rows first, so those are severity >= 2 with confidence, or a
-# code floor rule that fired (payloads on real routes, credential attack).
-ATTENTION_SEVERITY = 2.0
-ATTENTION_SEVERITY_CONF = 0.3
+# --- Threat score (0-100) and bands ----------------------------------------
+# One number per IP, computed in code from Jev's answers. The attack vectors
+# (payloads, credential stuffing, enumeration) are mostly mutually exclusive,
+# so they enter as the STRONGEST one rather than a sum, gated by knowledge of
+# this application: the same payload counts 25% when sprayed at the raw IP
+# and 100% when aimed at a route that exists here. Weights sum to 1.
+#
+#   score = 100 * ( W_SEVERITY * severity_expectation / 3
+#                 + W_VECTOR   * max(exploit_payloads, credential_attack, enumeration)
+#                               * (VECTOR_GATE_FLOOR + (1 - VECTOR_GATE_FLOOR) * app_aware)
+#                 + W_APP_AWARE * app_aware
+#                 + W_SCANNING * max(scanner_tool, generic_probing, wrong_host) )
+W_SEVERITY = 0.45
+W_VECTOR = 0.35
+W_APP_AWARE = 0.10
+W_SCANNING = 0.10
+VECTOR_GATE_FLOOR = 0.25
+
+SEVERITY_LEVELS = ["Benign", "Nuisance", "Concerning", "Attack"]   # Jev's rubric levels, same words as the bands
+
+# Bands derive from the score, so they can never disagree with it.
+BANDS = [(0, "Benign"), (25, "Nuisance"), (50, "Concerning"), (75, "Attack")]
+
+# Attention: a human reads these rows first. Score at or above the Concerning
+# line, unless the category is a benign one (score and category are separate
+# judgments; when they disagree the Details sheet shows it, but a benign_user
+# at 55 is not a page). A code floor (payloads or credential attack on real
+# routes) flags on its own, whatever either judgment said.
+ATTENTION_SCORE = 50
+ATTENTION_EXCLUDED_CATEGORIES = ("benign_user", "benign_bot", "ai_agent")
 
 # Floors code applies from its own facts before Jev's rules. A floor never
 # lowers a Jev verdict, only raises it. Category order for "raise":
 CATEGORY_ORDER = ["unclear", "benign_user", "benign_bot", "ai_agent", "background_scan", "malicious"]
+
+# `malicious` means an attack on THIS application. When Jev picks it for
+# traffic with no knowledge of the app (app_aware below this) and no
+# credential or enumeration pattern, it is a mass exploit spray, which is
+# background scanning by definition. The one rule that lowers a verdict.
+MALICIOUS_MIN_APP_AWARE = 0.3
+MALICIOUS_KEEP_SIGNAL = 0.5   # credential_attack or enumeration at/above this keeps malicious regardless
 
 # A payload family hit against a route Jev says exists here (app_aware) is a
 # targeted attack whatever the choice said: one SQLi against /api/v1/... is

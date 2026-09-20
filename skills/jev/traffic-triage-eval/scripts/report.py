@@ -20,7 +20,8 @@ DISCLAIMER = (
 SIMPLE_COLUMNS = [
     ("Attention", "attention_text", 10),
     ("Category", "category", 16),
-    ("Severity (0-3)", "severity", 12),
+    ("Score (0-100)", "score", 12),
+    ("Band", "band", 11),
     ("Confidence", "category_confidence", 11),
     ("IP", "ip", 18),
     ("Requests", "requests", 9),
@@ -42,7 +43,10 @@ SIMPLE_COLUMNS = [
 DETAIL_COLUMNS = SIMPLE_COLUMNS[:6] + [
     ("Jev category (raw)", "jev_category", 16),
     ("Rule reasons", "rule_reasons_text", 40),
-    ("Severity confidence", "severity_confidence", 16),
+    ("Jev severity level", "jev_severity_level", 16),
+    ("Jev severity distribution", "jev_severity_distribution", 50),
+    ("Jev severity expectation (0-3)", "jev_severity_expectation", 18),
+    ("Jev severity confidence", "jev_severity_confidence", 16),
     ("Generic probing P", "generic_probing", 14),
     ("App aware P", "app_aware", 12),
     ("Exploit payloads P", "exploit_payloads", 15),
@@ -62,6 +66,7 @@ DETAIL_COLUMNS = SIMPLE_COLUMNS[:6] + [
     ("Error", "error", 40),
 ]
 
+BAND_FILL = {"Attack": "F8CBAD", "Concerning": "FFD966", "Nuisance": "FFF2CC", "Benign": "E2EFDA"}
 CATEGORY_FILL = {"malicious": "F8CBAD", "background_scan": "FFE699", "ai_agent": "BDD7EE",
                  "benign_bot": "DDEBF7", "benign_user": "C6E0B4", "unclear": "E7E6E6"}
 
@@ -121,6 +126,10 @@ def _results_sheet(sheet, title: str, rows: list[dict], columns: list[tuple], bo
         fill = CATEGORY_FILL.get(row.get("category", ""))
         if fill:
             sheet.cell(row=r, column=2).fill = PatternFill("solid", fgColor=fill)
+        band_fill = BAND_FILL.get(row.get("band", ""))
+        if band_fill and title == "Results":
+            sheet.cell(row=r, column=3).fill = PatternFill("solid", fgColor=band_fill)
+            sheet.cell(row=r, column=4).fill = PatternFill("solid", fgColor=band_fill)
     sheet.freeze_panes = "F2"
     sheet.auto_filter.ref = sheet.dimensions
 
@@ -154,10 +163,17 @@ def _text_sheet(book, title: str, text: str) -> None:
 
 def _column_guide() -> str:
     return (
-        "Attention: YES when the category is malicious or Jev's severity is 2+ with confidence. Start here.\n"
+        "Attention: YES when the score is 50 or more (Concerning band or above) and the category is not a benign one, or a code rule fired "
+        "(exploit payloads or WAF attack signatures on routes that exist here; credential-attack volume on real auth endpoints). Start here.\n"
         "Category: benign_user | benign_bot | ai_agent | background_scan | malicious | unclear. Jev's choice, "
         "raised by code rules where code is certain (see Details > Rule reasons).\n"
-        "Severity (0-3): Jev's threat score. 0 none, 1 nuisance, 2 concerning, 3 active attack. Ranks rows; does not decide alone.\n"
+        "Score (0-100): threat score computed in code from Jev's answers: 45% Jev's severity rating, 35% the strongest attack vector "
+        "(exploit payloads, credential attack or enumeration) scaled by how much the traffic knows this application, 10% that app "
+        "knowledge itself, 10% scanning pressure. The weights are in scripts/questions.py.\n"
+        "Band: 0-24 Benign (ordinary use, declared bots, monitors), 25-49 Nuisance (scanning for software or files this site does not "
+        "have), 50-74 Concerning (recon of real endpoints, sign-in attempts, WAF denials on real routes, enumeration), 75-100 Attack "
+        "(exploit payloads against real endpoints, credential attacks at volume, enumeration returning successes). Bands derive from the "
+        "score. The score is about threat; the category is about who. When they disagree, the Details sheet shows why.\n"
         "Signals (Jev): yes/no questions answered at 0.5 or above, strongest first.\n"
         "Code signals: facts regex and counting established before Jev was asked (scanner UA, probe families, payloads, WAF denials).\n"
         "Sample paths: the most-requested paths with their usual status, so you can judge the row without opening the log.\n"

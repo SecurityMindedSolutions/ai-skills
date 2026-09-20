@@ -1,145 +1,145 @@
-Attention,Category,Severity (0-3),Confidence,IP,Requests,Window,Peak/min,404 rate,WAF deny,WAF labels,Signals (Jev),Code signals,Top UA,ASN,Hosts,Sample paths,Label
-YES,malicious,2.79,1.0,194.26.29.4,60,03:30-03:30 (0.8 min),60,0.0,19,,"exploit_payloads, app_aware, automated, enumeration","payloads: 55 requests with exploit-shaped strings: sqli=29, xss=26; waf_denied: 19 requests denied by the WAF; enumeration: 8 distinct ids under /api/v1/trust/documents?tenant_id=","Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",49505,"app.example-trust.io, trust.example-trust.io","22x /api/v1/trust/documents [403/200]
+Attention,Category,Score (0-100),Band,Confidence,IP,Requests,Window,Peak/min,404 rate,WAF deny,WAF labels,Signals (Jev),Code signals,Top UA,ASN,Hosts,Sample paths,Raw rows,Label
+YES,malicious,87.7,Attack,1.0,194.26.29.4,60,03:30-03:30 (0.8 min),60,0.0,19,,"exploit_payloads, app_aware, automated, enumeration","payloads: 55 requests with exploit-shaped strings: sqli=29, xss=26; waf_denied: 19 requests denied by the WAF; enumeration: 8 distinct ids under /api/v1/trust/documents?tenant_id=","Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",49505,"app.example-trust.io, trust.example-trust.io","22x /api/v1/trust/documents [403/200]
 20x /api/v1/tenants/acme/documents [200/400]
-18x /acme/documents [400/200]",malicious
-YES,malicious,2.79,1.0,176.65.144.71,30,20:40-20:41 (1.2 min),25,0.0,0,,"exploit_payloads, app_aware, automated","ua_script: 22 of 30 requests carry a script-class User-Agent; payloads: 40 requests with exploit-shaped strings: ssrf=25, template_injection=5, log4shell_jndi=5, scanner_marker=5",python-requests/2.31.0,209588,app.example-trust.io,"11x /api/v1/tenants/acme/documents/preview [403/400]
-10x /api/v1/tenants/acme/pages/import [400/401]
-5x /api/v1/trust/pages [400/403]
-4x /api/v1/tenants/acme/settings [401/403]",malicious
-YES,malicious,2.74,1.0,2a02:4780:1:1::1,24,09:55-09:55 (0.7 min),24,0.0,0,,"exploit_payloads, app_aware, automated","ua_script: 24 of 24 requests carry a script-class User-Agent; payloads: 24 requests with exploit-shaped strings: deserialization=13, template_injection=11",Apache-HttpClient/4.5.14 (Java/17.0.2),47583,app.example-trust.io,"10x /api/v1/tenants/acme/members [400/401]
+18x /acme/documents [400/200]",investigate/194.26.29.4.jsonl,malicious
+YES,malicious,86.7,Attack,1.0,2a02:4780:1:1::1,24,09:55-09:55 (0.7 min),24,0.0,0,,"exploit_payloads, app_aware, automated","ua_script: 24 of 24 requests carry a script-class User-Agent; payloads: 24 requests with exploit-shaped strings: deserialization=13, template_injection=11",Apache-HttpClient/4.5.14 (Java/17.0.2),47583,app.example-trust.io,"10x /api/v1/tenants/acme/members [400/401]
 6x /api/v1/tenants/acme/settings [400/401]
 5x /api/v1/tenants/acme/pages [401/400]
-3x /api/v1/tenants/acme/documents [401]",malicious
-YES,malicious,2.48,0.97,198.51.100.50,200,04:30-04:34 (4.3 min),47,0.0,0,,"credential_attack, app_aware, automated",ua_script: 200 of 200 requests carry a script-class User-Agent; waf_throttled: 190 requests rate-limited by the WAF; auth_volume: 200 requests to authentication endpoints,axios/1.7.2,63949,app.example-trust.io,200x /api/v1/auth/oauth/register [429/201],malicious
-YES,malicious,2.32,0.99,141.98.11.5,20,18:05-18:05 (0.4 min),20,0.15,8,,"exploit_payloads, app_aware, generic_probing, automated",payloads: 20 requests with exploit-shaped strings: traversal=20; waf_denied: 8 requests denied by the WAF,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",209605,app.example-trust.io,"4x /api/v1/tenants/acme/documents/../../../../etc/passwd [400/404]
-4x /assets/..%2f..%2f.env [400/403]
-4x /api/v1/trust/documents/%2e%2e/%2e%2e/etc/passwd [403/404]
-4x /api/v1/tenants/acme/documents/..\..\windows\win.ini [400/404]
-4x /acme/documents/....//....//etc/shadow [400/403]",malicious
-YES,malicious,2.28,1.0,23.129.64.1,140,23:00-23:00 (0.4 min),140,0.29,14,,"exploit_payloads, automated, scanner_tool, app_aware, credential_attack","ua_scanner: 140 of 140 requests carry a scanner-class User-Agent; payloads: 53 requests with exploit-shaped strings: template_injection=19, scanner_marker=19, traversal=15; waf_denied: 14 requests denied by the WAF; burst: peak 140 requests in one minute",Mozilla/5.0 (Nuclei - Open-source project (github.com/projectdiscovery/nuclei)),396507,app.example-trust.io,"42x /api/v1/tenants/acme/documents [400/405]
+3x /api/v1/tenants/acme/documents [401]",investigate/2a02_4780_1_1__1.jsonl,malicious
+YES,malicious,86.4,Attack,1.0,176.65.144.71,30,20:40-20:41 (1.2 min),25,0.0,0,,"exploit_payloads, app_aware, automated","ua_script: 22 of 30 requests carry a script-class User-Agent; payloads: 40 requests with exploit-shaped strings: ssrf=25, template_injection=5, log4shell_jndi=5, scanner_marker=5",python-requests/2.31.0,209588,app.example-trust.io,"11x /api/v1/tenants/acme/documents/preview [403/400]
+10x /api/v1/tenants/acme/pages/import [400/401]
+5x /api/v1/trust/pages [400/403]
+4x /api/v1/tenants/acme/settings [401/403]",investigate/176.65.144.71.jsonl,malicious
+YES,malicious,85.0,Attack,1.0,23.129.64.1,140,23:00-23:00 (0.4 min),140,0.29,14,,"exploit_payloads, automated, scanner_tool, app_aware, credential_attack","ua_scanner: 140 of 140 requests carry a scanner-class User-Agent; payloads: 53 requests with exploit-shaped strings: template_injection=19, scanner_marker=19, traversal=15; waf_denied: 14 requests denied by the WAF; burst: peak 140 requests in one minute",Mozilla/5.0 (Nuclei - Open-source project (github.com/projectdiscovery/nuclei)),396507,app.example-trust.io,"42x /api/v1/tenants/acme/documents [400/405]
 32x /api/v1/auth/user_info [405/400]
 19x /api/v1/trust/documents [404/401]
 16x /api/v1/trust/pages [404/405]
 16x /api/v1/auth/oauth/register [404/405]
-15x /api/v1/tenants/acme/audit [404/401]",malicious
-YES,malicious,2.15,0.72,89.248.165.2,46,01:44-09:29 (464.9 min),1,0.78,0,,"app_aware, enumeration",enumeration: 40 distinct ids under /api/v1/trust/documents/{uuid},Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0,202425,"trust.example-trust.io, app.example-trust.io","1x / [200]
+15x /api/v1/tenants/acme/audit [404/401]",investigate/23.129.64.1.jsonl,malicious
+YES,malicious,80.1,Attack,0.97,198.51.100.50,200,04:30-04:34 (4.3 min),47,0.0,0,,"credential_attack, app_aware, automated",ua_script: 200 of 200 requests carry a script-class User-Agent; waf_throttled: 190 requests rate-limited by the WAF; auth_volume: 200 requests to authentication endpoints,axios/1.7.2,63949,app.example-trust.io,200x /api/v1/auth/oauth/register [429/201],investigate/198.51.100.50.jsonl,malicious
+YES,malicious,76.6,Attack,0.99,103.99.1.7,300,13:20-13:23 (3.9 min),84,0.93,0,,"automated, app_aware, enumeration",ua_script: 300 of 300 requests carry a script-class User-Agent; enumeration: 300 distinct ids under /api/v1/trust/pages?tenant_id=,okhttp/4.12.0,136787,trust.example-trust.io,300x /api/v1/trust/pages [404/200],investigate/103.99.1.7.jsonl,malicious
+YES,malicious,76.0,Attack,0.96,141.98.11.5,20,18:05-18:05 (0.4 min),20,0.15,8,,"exploit_payloads, generic_probing, app_aware, automated",probe_paths: 4 requests for 1 scanner path families: env_files=4; payloads: 20 requests with exploit-shaped strings: traversal=20; waf_denied: 8 requests denied by the WAF,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",209605,app.example-trust.io,"4x /api/v1/tenants/acme/documents/../../../../etc/passwd [400/404]
+4x /assets/..%2f..%2f.env [400/403]
+4x /api/v1/trust/documents/%2e%2e/%2e%2e/etc/passwd [403/404]
+4x /api/v1/tenants/acme/documents/..\..\windows\win.ini [400/404]
+4x /acme/documents/....//....//etc/shadow [400/403]",investigate/141.98.11.5.jsonl,malicious
+YES,malicious,73.8,Concerning,1.0,5.188.86.2,420,02:50-02:51 (1.8 min),239,0.0,0,,"credential_attack, app_aware, automated",waf_throttled: 254 requests rate-limited by the WAF; auth_volume: 420 requests to authentication endpoints; burst: peak 239 requests in one minute,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",34665,app.example-trust.io,420x /api/v1/auth/signin-password [429/401],investigate/5.188.86.2.jsonl,malicious
+YES,malicious,68.8,Concerning,0.89,89.248.165.2,46,01:44-09:29 (464.9 min),1,0.78,0,,"app_aware, enumeration",enumeration: 40 distinct ids under /api/v1/trust/documents/{uuid},Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0,202425,"trust.example-trust.io, app.example-trust.io","1x / [200]
 1x /api/v1/auth/user_info [401]
 1x /api/v1/tenants/acme/documents [401]
 1x /api/v1/tenants/acme/members [401]
 1x /api/v1/tenants/acme/settings [401]
 1x /api/v1/tenants/acme/audit [401]
 1x /api/v1/trust/documents/37a3c30a-6b5f-494c-ab0c-a50fa30a6658 [404]
-1x /api/v1/trust/documents/8ff19886-d5bf-4926-ad84-0689ceed0ffc [404]",malicious
-YES,malicious,2.14,1.0,5.188.86.2,420,02:50-02:51 (1.8 min),239,0.0,0,,"credential_attack, app_aware, automated",waf_throttled: 254 requests rate-limited by the WAF; auth_volume: 420 requests to authentication endpoints; burst: peak 239 requests in one minute,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",34665,app.example-trust.io,420x /api/v1/auth/signin-password [429/401],malicious
-YES,malicious,2.12,0.99,103.99.1.7,300,13:20-13:23 (3.9 min),84,0.93,0,,"automated, enumeration, app_aware",ua_script: 300 of 300 requests carry a script-class User-Agent; enumeration: 300 distinct ids under /api/v1/trust/pages?tenant_id=,okhttp/4.12.0,136787,trust.example-trust.io,300x /api/v1/trust/pages [404/200],malicious
-,background_scan,1.06,0.8,162.142.125.5,2,12:01-12:01 (0.0 min),2,0.5,0,,"wrong_host, automated, scanner_tool",ua_scanner: 2 of 2 requests carry a scanner-class User-Agent; raw_ip_host: 2 requests addressed the server by IP instead of a hostname,Mozilla/5.0 zgrab/0.x,398324,203.0.113.200,"1x / [200]
-1x /robots.txt [404]",background_scan
-,background_scan,1.01,0.95,80.94.95.211,45,21:15-21:15 (0.1 min),45,1.0,0,,"generic_probing, automated, scanner_tool",ua_scanner: 45 of 45 requests carry a scanner-class User-Agent; probe_paths: 45 requests for 1 scanner path families: backup_files=45,Go-http-client/1.1,204428,app.example-trust.io,"1x /backup.zip [404]
+1x /api/v1/trust/documents/8ff19886-d5bf-4926-ad84-0689ceed0ffc [404]",investigate/89.248.165.2.jsonl,malicious
+,background_scan,28.9,Nuisance,1.0,193.32.162.9,7,19:03-19:03 (0.0 min),7,1.0,0,,"generic_probing, wrong_host, automated, scanner_tool",ua_empty: 7 of 7 requests carry a empty-class User-Agent; probe_paths: 6 requests for 1 scanner path families: shells_exploits=6; raw_ip_host: 7 requests addressed the server by IP instead of a hostname,(empty),202425,203.0.113.200,"1x /cgi-bin/luci [404]
+1x /setup.cgi [404]
+1x /GponForm/diag_Form [404]
+1x /tmUnblock.cgi [404]
+1x /boaform/admin/formLogin [404]
+1x /HNAP1/ [404]
+1x /shell [404]",,background_scan
+,background_scan,28.1,Nuisance,0.7,162.142.125.5,2,12:01-12:01 (0.0 min),2,0.5,0,,"wrong_host, automated, scanner_tool",ua_scanner: 2 of 2 requests carry a scanner-class User-Agent; raw_ip_host: 2 requests addressed the server by IP instead of a hostname,Mozilla/5.0 zgrab/0.x,398324,203.0.113.200,"1x / [200]
+1x /robots.txt [404]",,background_scan
+,background_scan,26.4,Nuisance,1.0,80.94.95.211,45,21:15-21:15 (0.1 min),45,1.0,0,,"generic_probing, automated, scanner_tool",ua_scanner: 45 of 45 requests carry a scanner-class User-Agent; probe_paths: 45 requests for 1 scanner path families: backup_files=45,Go-http-client/1.1,204428,app.example-trust.io,"1x /backup.zip [404]
 1x /backup.sql [404]
 1x /backup.tar.gz [404]
 1x /backup.bak [404]
 1x /backup.rar [404]
 1x /site.zip [404]
 1x /site.sql [404]
-1x /site.tar.gz [404]",background_scan
-,background_scan,1.0,0.45,87.120.104.29,30,22:00-22:29 (29.0 min),1,0.0,30,,"wrong_host, automated",waf_denied: 30 requests denied by the WAF,Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36,34224,vwnfnjosqnhsomoqaqsn.example-cdn.net,30x / [502],background_scan
-,background_scan,1.0,1.0,91.92.240.7,27,07:44-07:44 (0.1 min),27,1.0,0,,"generic_probing, automated, wrong_host, scanner_tool",ua_script: 27 of 27 requests carry a script-class User-Agent; probe_paths: 24 requests for 1 scanner path families: php_admin=24; raw_ip_host: 27 requests addressed the server by IP instead of a hostname,python-requests/2.28.1,394711,203.0.113.200,"3x /phpmyadmin/index.php [404]
-3x /pma/index.php [404]
-3x /myadmin/ [404]
-3x /adminer.php [404]
-3x /phpinfo.php [404]
-3x /mysql/ [404]
-3x /db/index.php [404]
-3x /sql/ [404]",background_scan
-,background_scan,1.0,1.0,45.155.205.10,18,01:12-01:12 (0.1 min),18,1.0,0,,"generic_probing, wrong_host, automated, scanner_tool","probe_paths: 26 requests for 3 scanner path families: wordpress=14, php_admin=8, env_files=4; raw_ip_host: 18 requests addressed the server by IP instead of a hostname","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",44477,203.0.113.200,"2x /wp-login.php [404]
+1x /site.tar.gz [404]",,background_scan
+,background_scan,25.8,Nuisance,0.11,87.120.104.29,30,22:00-22:29 (29.0 min),1,0.0,30,,"wrong_host, automated",waf_denied: 30 requests denied by the WAF,Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36,34224,vwnfnjosqnhsomoqaqsn.example-cdn.net,30x / [502],,background_scan
+,background_scan,25.7,Nuisance,1.0,45.155.205.10,18,01:12-01:12 (0.1 min),18,1.0,0,,"generic_probing, wrong_host, automated, scanner_tool","probe_paths: 26 requests for 3 scanner path families: wordpress=14, php_admin=8, env_files=4; raw_ip_host: 18 requests addressed the server by IP instead of a hostname","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",44477,203.0.113.200,"2x /wp-login.php [404]
 2x /xmlrpc.php [404]
 2x /wp-admin/ [404]
 2x /wp-content/plugins/ [404]
 2x /.env [404]
 2x /.git/config [404]
 2x /wp-includes/wlwmanifest.xml [404]
-2x /wordpress/wp-login.php [404]",background_scan
-,background_scan,1.0,1.0,193.32.162.9,7,19:03-19:03 (0.0 min),7,1.0,0,,"generic_probing, wrong_host, automated, scanner_tool",ua_empty: 7 of 7 requests carry a empty-class User-Agent; probe_paths: 6 requests for 1 scanner path families: shells_exploits=6; raw_ip_host: 7 requests addressed the server by IP instead of a hostname,(empty),202425,203.0.113.200,"1x /cgi-bin/luci [404]
-1x /setup.cgi [404]
-1x /GponForm/diag_Form [404]
-1x /tmUnblock.cgi [404]
-1x /boaform/admin/formLogin [404]
-1x /HNAP1/ [404]
-1x /shell [404]",background_scan
-,background_scan,0.49,0.85,185.220.101.3,3,04:02-04:02 (0.0 min),3,0.67,0,,"wrong_host, automated, scanner_tool, declared_bot",ua_scanner: 3 of 3 requests carry a scanner-class User-Agent; raw_ip_host: 3 requests addressed the server by IP instead of a hostname,Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/),398324,203.0.113.200,"1x /robots.txt [404]
+2x /wordpress/wp-login.php [404]",,background_scan
+,background_scan,25.6,Nuisance,1.0,91.92.240.7,27,07:44-07:44 (0.1 min),27,1.0,0,,"generic_probing, wrong_host, automated, scanner_tool",ua_script: 27 of 27 requests carry a script-class User-Agent; probe_paths: 24 requests for 1 scanner path families: php_admin=24; raw_ip_host: 27 requests addressed the server by IP instead of a hostname,python-requests/2.28.1,394711,203.0.113.200,"3x /phpmyadmin/index.php [404]
+3x /pma/index.php [404]
+3x /myadmin/ [404]
+3x /adminer.php [404]
+3x /phpinfo.php [404]
+3x /mysql/ [404]
+3x /db/index.php [404]
+3x /sql/ [404]",,background_scan
+,background_scan,19.2,Benign,0.81,185.220.101.3,3,04:02-04:02 (0.0 min),3,0.67,0,,"wrong_host, automated, scanner_tool, declared_bot",ua_scanner: 3 of 3 requests carry a scanner-class User-Agent; raw_ip_host: 3 requests addressed the server by IP instead of a hostname,Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/),398324,203.0.113.200,"1x /robots.txt [404]
 1x / [200]
-1x /.well-known/security.txt [404]",background_scan
-,ai_agent,0.74,0.99,35.190.1.7,4,17:30-17:30 (0.1 min),4,0.0,0,,"ai_operated, app_aware, automated",ua_ai_agent: 4 of 4 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.0.0 Safari/537.36 browser-use/0.3",15169,trust.example-trust.io,"1x /acme [200]
-1x /acme/documents [200]
-1x /acme/documents/soc2 [200]
-1x /acme/faq [200]",ai_agent
-,ai_agent,0.71,1.0,44.201.1.9,21,15:05-15:12 (7.8 min),4,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 21 of 21 requests carry a ai_agent-class User-Agent,mcp-client/1.0 (claude-desktop; model-context-protocol),14618,app.example-trust.io,"18x /mcp [200]
+1x /.well-known/security.txt [404]",,background_scan
+,ai_agent,24.0,Benign,1.0,44.201.1.9,21,15:05-15:12 (7.8 min),4,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 21 of 21 requests carry a ai_agent-class User-Agent,mcp-client/1.0 (claude-desktop; model-context-protocol),14618,app.example-trust.io,"18x /mcp [200]
 1x /api/v1/auth/oauth/register [201]
 1x /api/v1/auth/oauth/authorize [302]
-1x /api/v1/auth/oauth/token [200]",ai_agent
-,ai_agent,0.49,0.98,20.171.207.1,80,06:00-09:57 (237.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 80 of 80 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",8075,trust.example-trust.io,"21x /acme/faq [200]
+1x /api/v1/auth/oauth/token [200]",,ai_agent
+,ai_agent,22.0,Benign,0.99,35.190.1.7,4,17:30-17:30 (0.1 min),4,0.0,0,,"ai_operated, app_aware, automated",ua_ai_agent: 4 of 4 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.0.0 Safari/537.36 browser-use/0.3",15169,trust.example-trust.io,"1x /acme [200]
+1x /acme/documents [200]
+1x /acme/documents/soc2 [200]
+1x /acme/faq [200]",,ai_agent
+,ai_agent,20.1,Benign,0.98,20.171.207.1,80,06:00-09:57 (237.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 80 of 80 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",8075,trust.example-trust.io,"21x /acme/faq [200]
 17x /acme/documents [200]
 15x /api/v1/trust/pages [200]
 14x /acme [200]
-13x /api/v1/trust/documents [200]",ai_agent
-,ai_agent,0.48,0.99,3.15.8.8,25,10:00-12:48 (168.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 25 of 25 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",16509,trust.example-trust.io,"9x /api/v1/trust/pages [200]
+13x /api/v1/trust/documents [200]",,ai_agent
+,ai_agent,20.0,Benign,0.98,3.15.8.8,25,10:00-12:48 (168.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 25 of 25 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",16509,trust.example-trust.io,"9x /api/v1/trust/pages [200]
 7x /acme/documents [200]
 5x /api/v1/trust/documents [200]
-4x /acme [200]",ai_agent
-,ai_agent,0.4,0.99,52.14.20.5,40,08:00-10:36 (156.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 40 of 40 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",16509,trust.example-trust.io,"9x /api/v1/trust/pages [200]
+4x /acme [200]",,ai_agent
+,ai_agent,18.3,Benign,0.99,52.14.20.5,40,08:00-10:36 (156.0 min),1,0.0,0,,"ai_operated, app_aware, automated, declared_bot",ua_ai_agent: 40 of 40 requests carry a ai_agent-class User-Agent,"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",16509,trust.example-trust.io,"9x /api/v1/trust/pages [200]
 9x /acme/documents [200]
 9x /api/v1/trust/documents [200]
 7x /acme/faq [200]
-6x /acme [200]",ai_agent
-,benign_bot,0.71,0.99,203.0.113.11,96,00:00-23:45 (1425.0 min),1,0.0,0,,"automated, app_aware, monitoring",ua_script: 96 of 96 requests carry a script-class User-Agent,python-requests/2.32.3,16509,app.example-trust.io,96x /api/v1/tenants/acme/documents [200],benign_bot
-,benign_bot,0.59,0.89,203.0.113.13,4,11:40-11:40 (0.5 min),4,0.0,0,,"automated, app_aware",ua_script: 4 of 4 requests carry a script-class User-Agent; probe_paths: 1 requests for 1 scanner path families: api_docs=1,curl/8.7.1,7018,app.example-trust.io,"1x /robots.txt [200]
-1x /.well-known/security.txt [200]
-1x /sitemap.xml [200]
-1x /.well-known/openid-configuration [200]",benign_user
-,benign_bot,0.36,0.99,40.77.167.5,30,05:00-17:05 (725.0 min),1,0.0,0,,"automated, app_aware, declared_bot",ua_crawler: 30 of 30 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm),8075,trust.example-trust.io,"12x /api/v1/trust/documents [200]
+6x /acme [200]",,ai_agent
+,benign_bot,23.9,Benign,0.97,203.0.113.11,96,00:00-23:45 (1425.0 min),1,0.0,0,,"automated, app_aware, monitoring",ua_script: 96 of 96 requests carry a script-class User-Agent,python-requests/2.32.3,16509,app.example-trust.io,96x /api/v1/tenants/acme/documents [200],,benign_bot
+,benign_bot,16.9,Benign,0.99,40.77.167.5,30,05:00-17:05 (725.0 min),1,0.0,0,,"automated, app_aware, declared_bot",ua_crawler: 30 of 30 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm),8075,trust.example-trust.io,"12x /api/v1/trust/documents [200]
 10x /acme [200]
 4x /acme/documents [200]
 3x /api/v1/trust/pages [200]
-1x /acme/faq [200]",benign_bot
-,benign_bot,0.34,0.97,54.36.148.10,120,03:00-14:54 (714.0 min),1,0.0,0,,"automated, app_aware, declared_bot",ua_crawler: 120 of 120 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/),16276,trust.example-trust.io,"25x /acme/faq [200]
+1x /acme/faq [200]",,benign_bot
+,benign_bot,16.1,Benign,0.97,54.36.148.10,120,03:00-14:54 (714.0 min),1,0.0,0,,"automated, app_aware, declared_bot",ua_crawler: 120 of 120 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/),16276,trust.example-trust.io,"25x /acme/faq [200]
 20x /acme [200]
 19x /acme/documents/soc2 [200]
 18x /api/v1/trust/documents [200]
 18x /acme/documents [200]
 11x /acme/documents/pentest [200]
-9x /api/v1/trust/pages [200]",benign_bot
-,benign_bot,0.3,0.99,31.13.115.2,2,13:02-13:02 (0.0 min),2,0.0,0,,"automated, declared_bot, app_aware",ua_crawler: 2 of 2 requests carry a crawler-class User-Agent,facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php),32934,trust.example-trust.io,"1x /acme [200]
-1x /acme/documents [200]",benign_bot
-,benign_bot,0.13,0.98,66.249.66.1,60,02:00-21:40 (1179.5 min),1,0.0,0,,"app_aware, automated, declared_bot",ua_crawler: 60 of 60 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html),15169,trust.example-trust.io,"13x /api/v1/trust/pages [200]
+9x /api/v1/trust/pages [200]",,benign_bot
+,benign_bot,14.4,Benign,0.98,66.249.66.1,60,02:00-21:40 (1179.5 min),1,0.0,0,,"app_aware, declared_bot, automated",ua_crawler: 60 of 60 requests carry a crawler-class User-Agent,Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html),15169,trust.example-trust.io,"13x /api/v1/trust/pages [200]
 11x /acme [200]
 10x /acme/documents [200]
 10x /robots.txt [200]
 9x /api/v1/trust/documents [200]
-7x /acme/faq [200]",benign_bot
-,benign_bot,0.0,1.0,216.144.248.20,1440,00:00-23:59 (1439.0 min),1,0.0,0,,"automated, monitoring, declared_bot, app_aware",ua_monitor: 1440 of 1440 requests carry a monitor-class User-Agent,Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/),20473,app.example-trust.io,1440x / [200],benign_bot
-,benign_bot,0.0,1.0,34.127.136.129,288,00:00-23:55 (1435.0 min),1,0.0,0,,"monitoring, automated, app_aware, declared_bot",ua_monitor: 288 of 288 requests carry a monitor-class User-Agent,Google-Cloud-Scheduler,15169,app.example-trust.io,288x /api/v1/tenant_admin/health [204],benign_bot
-,benign_user,1.42,0.83,203.0.113.12,29,09:12-09:15 (3.0 min),18,0.07,0,,"app_aware, generic_probing",probe_paths: 1 requests for 1 scanner path families: admin_panels=1,Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0,3320,app.example-trust.io,"3x / [200]
+7x /acme/faq [200]",,benign_bot
+,benign_bot,13.3,Benign,0.99,31.13.115.2,2,13:02-13:02 (0.0 min),2,0.0,0,,"automated, declared_bot, app_aware",ua_crawler: 2 of 2 requests carry a crawler-class User-Agent,facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php),32934,trust.example-trust.io,"1x /acme [200]
+1x /acme/documents [200]",,benign_bot
+,benign_bot,12.1,Benign,0.85,203.0.113.13,4,11:40-11:40 (0.5 min),4,0.0,0,,"automated, app_aware",ua_script: 4 of 4 requests carry a script-class User-Agent; probe_paths: 1 requests for 1 scanner path families: api_docs=1,curl/8.7.1,7018,app.example-trust.io,"1x /robots.txt [200]
+1x /.well-known/security.txt [200]
+1x /sitemap.xml [200]
+1x /.well-known/openid-configuration [200]",,benign_user
+,benign_bot,11.9,Benign,1.0,34.127.136.129,288,00:00-23:55 (1435.0 min),1,0.0,0,,"monitoring, app_aware, automated, declared_bot",ua_monitor: 288 of 288 requests carry a monitor-class User-Agent,Google-Cloud-Scheduler,15169,app.example-trust.io,288x /api/v1/tenant_admin/health [204],,benign_bot
+,benign_bot,7.2,Benign,1.0,216.144.248.20,1440,00:00-23:59 (1439.0 min),1,0.0,0,,"monitoring, automated, declared_bot, app_aware",ua_monitor: 1440 of 1440 requests carry a monitor-class User-Agent,Mozilla/5.0+(compatible; UptimeRobot/2.0; http://www.uptimerobot.com/),20473,app.example-trust.io,1440x / [200],,benign_bot
+,benign_user,40.1,Nuisance,0.84,203.0.113.12,29,09:12-09:15 (3.0 min),18,0.07,0,,"app_aware, generic_probing",probe_paths: 1 requests for 1 scanner path families: admin_panels=1,Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0,3320,app.example-trust.io,"3x / [200]
 3x /assets/index-8f2a1c.js [200]
 3x /assets/vendor-91bb.js [200]
 3x /assets/index-c0ffee.css [200]
 3x /favicon.ico [200]
 3x /logo.svg [200]
 2x /api/v1/tenants/acme/members [200]
-2x /api/v1/tenants/acme/pages [200]",benign_user
-,benign_user,1.16,0.73,203.0.113.14,21,16:20-16:21 (0.9 min),20,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",7922,app.example-trust.io,"2x /api/v1/auth/mfa/verify [401/200]
+2x /api/v1/tenants/acme/pages [200]",,benign_user
+,benign_user,34.1,Nuisance,0.76,203.0.113.14,21,16:20-16:21 (0.9 min),20,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",7922,app.example-trust.io,"2x /api/v1/auth/mfa/verify [401/200]
 2x / [200]
 2x /assets/index-8f2a1c.js [200]
 2x /assets/vendor-91bb.js [200]
 2x /assets/index-c0ffee.css [200]
 2x /favicon.ico [200]
 2x /logo.svg [200]
-2x /api/v1/tenants/acme/pages [200]",benign_user
-,benign_user,0.5,0.38,203.0.113.10,56,14:03-14:10 (7.4 min),18,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",7922,app.example-trust.io,"6x / [200]
+2x /api/v1/tenants/acme/pages [200]",,benign_user
+,benign_user,22.8,Benign,0.36,203.0.113.10,56,14:03-14:10 (7.4 min),18,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",7922,app.example-trust.io,"6x / [200]
 6x /assets/index-8f2a1c.js [200]
 6x /assets/vendor-91bb.js [200]
 6x /assets/index-c0ffee.css [200]
 6x /favicon.ico [200]
 6x /logo.svg [200]
 5x /api/v1/tenants/acme/documents [200/201]
-4x /api/v1/tenants/acme/members [200]",benign_user
-,unclear,0.01,0.57,198.18.0.1,1,12:30-12:30 (0.0 min),1,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",6939,app.example-trust.io,1x / [200],unclear
+4x /api/v1/tenants/acme/members [200]",,benign_user
+,unclear,7.0,Benign,0.43,198.18.0.1,1,12:30-12:30 (0.0 min),1,0.0,0,,app_aware,,"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",6939,app.example-trust.io,1x / [200],investigate/198.18.0.1.jsonl,unclear

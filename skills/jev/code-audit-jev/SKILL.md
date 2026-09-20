@@ -1,18 +1,19 @@
 ---
 name: code-audit-jev
 description: >-
-  Cheap first-pass security audit of a repository, or a folder of hundreds of
-  repositories, using TypeSafe's Jev: code splits every source, Terraform, CI
-  and container file into units, computes regex facts, and asks Jev a fixed
-  set of typed questions per unit (injection, missing authorization, tenant
-  isolation, secrets, SSRF, traversal, deserialization, weak crypto,
-  disclosure, XSS, insecure infra, supply chain, unsafe deletion, severity).
-  Writes a spreadsheet of candidates sorted attention-first, ready for a
-  person or a reasoning agent to trace. Use whenever the user wants a fast
-  or cheap security scan of code, wants to triage many repos before a full
-  /audit-security, or asks which files or repos deserve a deep review -
-  even if they do not say "TypeSafe" or "Jev". Research proof of concept;
-  a candidate list, not a verified finding list.
+  Unit-level security judgment of a repository, a folder of repositories, or
+  the units a pull request changed, with TypeSafe's Jev: code splits every
+  source, Terraform, CI and container file into units, computes regex facts,
+  and asks Jev typed questions from 22 rule files (injection, missing
+  authorization, tenant isolation, IDOR, secrets, SSRF, open redirect, CSRF,
+  traversal, uploads, deserialization, XXE, NoSQL/LDAP, mass assignment, weak
+  crypto, sessions and tokens, disclosure, XSS, resource exhaustion, insecure
+  infra, supply chain, unsafe deletion) plus a severity scale. Writes a
+  ranked candidate list, a PR summary and SARIF, and ships as a composite
+  GitHub Action. Use whenever the user wants a fast or cheap security scan
+  of code, a security check on a pull request, or triage of many repos
+  before a full /audit-security - even if they do not say "TypeSafe" or
+  "Jev". Candidates for a person or agent to trace, not verified findings.
 user-invocable: true
 allowed-tools:
   - Bash

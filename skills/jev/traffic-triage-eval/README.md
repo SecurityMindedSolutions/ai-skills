@@ -60,8 +60,13 @@ then create an API key at [console.typesafe.ai/keys](https://console.typesafe.ai
 3. **Classify** with one Jev request per IP: a category choice, ten yes/no
    signals, a 0-3 severity. Code raises the category where it is certain and
    never lowers it.
-4. **Report** to `results.xlsx` / `.csv` / `.json`, attention rows first,
-   with agreement metrics when labels are given.
+4. **Report** as two tables on the console (category counts; attention and
+   malicious rows with evidence) and to `results.xlsx` / `.csv` / `.json`,
+   attention rows first, with agreement metrics when labels are given.
+5. **Carve out** the raw rows of every IP that is malicious, unclear or
+   flagged to `out/investigate/<ip>.jsonl` with an index, so the follow-up
+   investigation starts from the run directory and never re-queries the
+   log source.
 
 ## The contract: you retrieve, it classifies
 

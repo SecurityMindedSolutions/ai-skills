@@ -10,8 +10,11 @@ each one was doing, and write a spreadsheet sorted attention-first.
 
 With --labels labels.csv (columns ip,label) the run also reports agreement
 per category so the questions can be tuned. --dry-run profiles and prints
-token estimates without calling Jev. Works with a plain Python 3.10+ install
-(see bootstrap.py).
+token estimates without calling Jev. Every IP whose verdict is malicious,
+unclear or flagged for attention has its raw rows carved out to
+out/investigate/<ip>.jsonl with an index, so investigation never re-queries
+the log source (--carve changes the set). Works with a plain Python 3.10+
+install (see bootstrap.py).
 """
 
 from __future__ import annotations
@@ -58,6 +61,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-tokens", type=int, default=q.MAX_PROFILE_TOKENS, help="profile token budget per IP")
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--dry-run", action="store_true", help="profile only; no Jev calls")
+    p.add_argument("--carve", default="malicious,unclear,attention",
+                   help="comma list of categories (plus `attention`) whose raw rows are written to out/investigate/; `none` disables")
+    p.add_argument("--verbose", action="store_true", help="print one line per IP as well as the tables")
     p.add_argument("--no-color", action="store_true")
     return p.parse_args()
 
@@ -100,6 +106,7 @@ def flatten(verdict: dict, profile: dict, label: str) -> dict:
         "waf_labels_text": ", ".join(f"{l['value'].split(':')[-1]} x{l['requests']}" for l in profile["waf"]["labels"][:5]),
         "signals_text": ", ".join(verdict.get("signals", [])),
         "code_signals_text": "; ".join(f"{k}: {x}" for k, x in profile["code_signals"].items()),
+        "code_signal_names": ", ".join(profile["code_signals"]),
         "rule_reasons_text": "; ".join(verdict.get("rule_reasons", [])),
         "top_ua": profile["user_agents"]["top"][0]["ua"] if profile["user_agents"]["top"] else "",
         "asn": profile["asn"] or "",
@@ -174,13 +181,15 @@ def main() -> None:
     rows = [flatten(verdicts[ip], profiles[ip], labels.get(ip, "")) for ip in order]
     rows.sort(key=lambda r: (not r["attention"], -q.CATEGORY_ORDER.index(r["category"]) if r["category"] in q.CATEGORY_ORDER else 1,
                              -(r["severity"] or 0), -r["requests"]))
-    for r in rows:
-        col = CATEGORY_COLOR.get(r["category"], RED)
-        flag = c(RED, "!! ") if r["attention"] else "   "
-        print(f"{flag}{c(col, r['category']):<28} sev {r['severity']!s:<5} {r['ip']:<40} {r['requests']:>6} req  "
-              f"{c(DIM, r['signals_text'][:70])}")
-        if r.get("error"):
-            print(f"      {c(RED, r['error'][:160])}")
+    if args.verbose:
+        for r in rows:
+            col = CATEGORY_COLOR.get(r["category"], RED)
+            flag = c(RED, "!! ") if r["attention"] else "   "
+            print(f"{flag}{c(col, r['category']):<28} sev {r['severity']!s:<5} {r['ip']:<40} {r['requests']:>6} req  "
+                  f"{c(DIM, r['signals_text'][:70])}")
+            if r.get("error"):
+                print(f"      {c(RED, r['error'][:160])}")
+    carved = carve_out(out_dir, rows, groups, args.carve)
 
     ok = [r for r in rows if not r.get("error")]
     tokens = [r["input_tokens"] for r in ok if r.get("input_tokens")]
@@ -198,11 +207,13 @@ def main() -> None:
         "validation": {k: v for k, v in stats.items() if k != "examples"},
         "agreement": agreement(rows),
     }
+    summary["carved_out"] = len(carved)
     paths = write_all(out_dir, rows, summary)
-    print(c(BOLD, "\nSummary"))
-    for k in ("categories", "attention", "jev_input_tokens_per_ip_median", "jev_input_tokens_per_ip_max",
-              "usd_per_1000_ips", "latency_ms_median", "errors"):
-        print(f"  {k}: {summary[k]}")
+    print(summary_table(summary, window))
+    print(carve_table(rows, carved))
+    print(c(BOLD, "Run: ") + f"{summary['ips']} IPs, {summary['events']} requests; Jev {summary['jev_input_tokens_per_ip_median']} tokens/IP median "
+          f"({summary['jev_input_tokens_per_ip_max']} max), ${summary['usd_per_1000_ips']}/1000 IPs, {summary['latency_ms_median']} ms median, "
+          f"{summary['errors']} errors")
     if summary["agreement"]:
         a = summary["agreement"]
         tone = GREEN if not a["attacks_missing_attention"] else RED
@@ -215,6 +226,59 @@ def main() -> None:
                       f"recall {m['recall']}  precision {m['precision']}")
     print("\n" + " ".join(f"{k}={v}" for k, v in paths.items()))
     print(c(DIM, DISCLAIMER))
+
+
+def carve_out(out_dir: Path, rows: list[dict], groups: dict[str, list[dict]], spec: str) -> list[dict]:
+    """Write the raw canonical rows of every IP worth a second look to
+    out/investigate/<ip>.jsonl, plus an index, so the investigation starts
+    from the run directory instead of a fresh log query."""
+    wanted = {s.strip() for s in spec.split(",") if s.strip()}
+    if not wanted or "none" in wanted:
+        return []
+    picked = [r for r in rows if r["category"] in wanted or ("attention" in wanted and r["attention"])]
+    if not picked:
+        return []
+    folder = out_dir / "investigate"
+    folder.mkdir(parents=True, exist_ok=True)
+    for r in picked:
+        name = r["ip"].replace(":", "_")
+        with (folder / f"{name}.jsonl").open("w", encoding="utf-8") as fh:
+            for ev in sorted(groups[r["ip"]], key=lambda e: e["ts"]):
+                fh.write(json.dumps(ev, separators=(",", ":")) + "\n")
+        r["raw_file"] = f"investigate/{name}.jsonl"
+    lines = ["# Carved out for investigation", "",
+             "Raw canonical rows for every IP whose verdict was " + ", ".join(sorted(wanted)) +
+             ", one JSONL per IP, time-sorted, every field the source supplied. Attention rows first.", "",
+             "| IP | Category | Sev | Attention | Requests | Signals | Code signals | File |", "|---|---|---:|---|---:|---|---|---|"]
+    for r in picked:
+        lines.append(f"| {r['ip']} | {r['category']} | {r['severity']} | {'YES' if r['attention'] else ''} | {r['requests']} | "
+                     f"{r['signals_text']} | {r['code_signal_names']} | `{r['raw_file']}` |")
+    (folder / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return picked
+
+
+def summary_table(summary: dict, window: str) -> str:
+    cats = list(q.CATEGORIES)
+    head = "| Window | Requests | IPs | " + " | ".join(cats) + " | Attention | Carved out |"
+    sep = "|---|---:|---:|" + "---:|" * len(cats) + "---:|---:|"
+    row = (f"| {window} | {summary['events']:,} | {summary['ips']:,} | " + " | ".join(str(summary["categories"].get(k, 0)) for k in cats)
+           + f" | {summary['attention']} | {summary['carved_out']} |")
+    return "\n".join(["", head, sep, row, ""])
+
+
+def carve_table(rows: list[dict], carved: list[dict]) -> str:
+    shown = [r for r in carved if r["attention"] or r["category"] == "malicious"] or [r for r in rows if r["attention"]]
+    if not shown:
+        return "No IP needs attention.\n"
+    lines = ["| IP | Category | Sev | Req | Hosts | Signals | Code signals | Top paths | Raw |", "|---|---|---:|---:|---|---|---|---|---|"]
+    for r in shown:
+        paths = "; ".join(l.split(" [")[0] for l in r["paths_text"].split("\n")[:3])
+        flag = "!! " if r["attention"] else ""
+        lines.append(f"| {flag}{r['ip']} | {r['category']} | {r['severity']} | {r['requests']} | {r['hosts_text'][:40]} | "
+                     f"{r['signals_text'][:60]} | {r['code_signal_names'][:70]} | {paths[:80]} | {r.get('raw_file', '')} |")
+    n_unclear = sum(1 for r in carved if r["category"] == "unclear")
+    tail = f"\n{len(shown)} shown; {n_unclear} unclear IPs also carved out to investigate/ (see its README.md).\n" if n_unclear else "\n"
+    return "\n".join(lines) + tail
 
 
 def _dry_run(profiles: dict, max_tokens: int, c) -> None:

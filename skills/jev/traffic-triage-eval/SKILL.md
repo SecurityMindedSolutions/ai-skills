@@ -52,10 +52,14 @@ metadata:
    certain (payloads on real routes, credential volume with WAF evidence,
    scanner evidence with no app knowledge) and never lowers it. About 3,400
    tokens, 14 cents per thousand IPs, 330 ms median.
-4. **Report.** `scripts/evaluate.py` runs all of it and writes
-   `results.xlsx` (Results, Details, Summary, Read me) plus CSV and JSON,
-   one row per IP, attention rows first. With `--labels` it also scores
-   agreement per category.
+4. **Report and carve out.** `scripts/evaluate.py` runs all of it, prints
+   two tables (category counts; the attention and malicious rows with
+   their evidence), writes `results.xlsx` (Results, Details, Summary, Read
+   me) plus CSV and JSON, one row per IP, attention rows first, and writes
+   the **raw rows of every IP that is malicious, unclear or flagged** to
+   `out/investigate/<ip>.jsonl` with an index `README.md`, so the
+   investigation starts from the run directory and never re-queries the
+   log source. With `--labels` it also scores agreement per category.
 5. **Explain.** You, the agent, read the attention rows and tell the user
    what each flagged IP did, in plain words, with the paths.
 
@@ -142,26 +146,40 @@ python3 "$SKILL_DIR/scripts/evaluate.py" \
   --events "$STAGING/events.jsonl" --app "$STAGING/app.md" --out "$STAGING/out"
 ```
 
-The run prints one line per IP (attention rows marked `!!`), the category
-counts, tokens, cost, latency, and the agreement table if labelled.
+The run prints a category-count table, a table of the attention and
+malicious rows (IP, severity, hosts, signals, code signals, top paths, raw
+file), the token / cost / latency line, and the agreement table if
+labelled. `--verbose` adds one line per IP. `--carve` (default
+`malicious,unclear,attention`; `none` to disable) chooses which verdicts
+get their raw rows written to `out/investigate/`.
 
 To debug one IP, `python3 "$SKILL_DIR/scripts/classify.py" --events
 clean.jsonl --ip 1.2.3.4 --app app.md` prints the exact profile Jev saw and
 every answer.
 
-### 5. Report back
+### 5. Report back, as tables
 
-1. The attention rows first, each in two or three sentences: what the IP
-   asked for, how fast, what came back, what the WAF did, why it was
-   flagged (the signals and rule reasons), and what to check in the raw log.
-   Name the paths.
-2. The category counts, and anything notable in the non-attention rows: a
-   scanning campaign at nuisance severity, a burst of AI agents, a
-   customer's script that looks like a bot, an IP that is the user's own.
-3. Tokens, cost and latency in one line.
-4. Where the spreadsheet is, and the offer to delete the staged events.
+1. **The summary table** the run printed (one row per run; if several
+   sources or projects were run, one row each in one table): window,
+   requests, IPs, count per category, attention, carved out.
+2. **The attention table**: every attention and malicious row with IP,
+   category, severity, requests, hosts, signals, code signals, top paths,
+   and the `investigate/<ip>.jsonl` file. Under it, two or three sentences
+   per attention row: what the IP asked for, how fast, what came back,
+   what the WAF did, why it was flagged, and what to check in the raw
+   file. Name the paths.
+3. Anything notable outside those rows: a scanning campaign at nuisance
+   severity, a burst of AI agents, a customer's script that looks like a
+   bot, an IP that is the user's own, a CDN edge standing in for many
+   clients.
+4. Tokens, cost and latency in one line; where the spreadsheet and the
+   `investigate/` folder are; the offer to delete the staged events.
 5. The disclaimer, in two sentences: research proof of concept; triage
-   signal, verify in the raw log before acting.
+   signal, verify in the raw file before acting.
+
+The `investigate/` folder is the hand-off: whoever looks next (a person,
+another agent, a later session) opens `investigate/README.md` and the
+per-IP JSONL, and does not need the log source again.
 
 If the user then wants to tune it, `scripts/questions.py` is the whole
 policy and `scripts/signals.py` the whole pattern list; a labelled

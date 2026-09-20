@@ -35,6 +35,7 @@ SIMPLE_COLUMNS = [
     ("ASN", "asn", 8),
     ("Hosts", "hosts_text", 30),
     ("Sample paths", "paths_text", 70),
+    ("Raw rows", "raw_file", 30),
     ("Label", "label", 16),
 ]
 

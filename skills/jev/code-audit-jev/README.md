@@ -26,30 +26,26 @@ are in `references/methodology.md`.
 
 ## Run it
 
-Requirements: Python 3.11+, a TypeSafe API key (`TYPESAFE_API_KEY` in the
-environment or `~/.config/typesafe/env`). No packages to install.
+Ask your assistant. *"Security scan this repo with Jev"*, *"check what this PR
+changed"*, *"triage these twenty repos before I pick one to audit properly"* -
+`SKILL.md` covers the rest.
 
-```bash
-# whole tree
-python3 scripts/run.py --target /path/to/repo --app app.md --out out/
+Requirements: Python 3.11+ and a TypeSafe API key (`TYPESAFE_API_KEY` or
+`~/.config/typesafe/env`). No packages to install.
 
-# a change: only the units it touched, judged on both sides of the merge base
-python3 scripts/run.py --target /path/to/repo --app app.md --diff origin/main \
-  --sarif out/jev.sarif --summary out/summary.md
+What you can ask for, because the runner supports it:
 
-# a folder of repositories: one run each, plus fleet.csv
-python3 scripts/run.py --target /path/to/repos --app app.md --out out/
+| Scope | What happens |
+|---|---|
+| A whole tree | Every unit judged, ranked candidates out |
+| **A change** | Only the units the diff touched, judged on both sides of the merge base, so you see what the change *made worse* rather than what the file already was |
+| A folder of repositories | One run each plus a `fleet.csv`, for triaging which repo deserves a real audit |
+| **One unit, explained** | The exact state Jev saw and every answer behind a single finding - the way to check a result you doubt |
+| Your own rules | A rules folder beside the built-in 22; same `id` replaces, new `id` adds |
 
-# one unit, with the exact state Jev saw and every answer
-python3 scripts/run.py --target /path/to/repo --app app.md --explain src/handlers/auth.py:login
-
-# your own rules beside the built-in ones
-python3 scripts/run.py --target /path/to/repo --app app.md --rules .jev/rules
-```
-
-`--dry-run` lists the units and the token estimate without calling Jev.
-`--exclude PREFIX` skips vendored or archived trees. `--scope signals`
-judges only units with a regex signal or a security-relevant role.
+It can also list the units and the token estimate without calling Jev, skip
+vendored or archived trees, and narrow to units that carry a regex signal or a
+security-relevant role when a full pass is more than you want to pay for.
 
 ## Run it on every pull request
 
@@ -283,14 +279,12 @@ mis-filed, because the second vector is often the better description.
 Actions portal with 27 labelled defects (`labels.csv`) across all 22 rules and
 17 hard negatives (`negatives.csv`).
 
-```bash
-cd mock-data/sample-repo
-python3 ../../scripts/run.py --target . --app app.md --exclude labels.csv --exclude negatives.csv --exclude app.md --out /tmp/jev
-python3 ../../scripts/compare.py --results /tmp/jev/results.json --reference labels.csv
-```
+Ask for it after any change to a rule: *"re-run the regression set"*. It
+scores the run against `labels.csv` and reports what moved.
 
-Expected: 27/27 flagged, 16/17 negatives quiet, about $0.02. Run it after
-any change to a rule.
+Current: **27/27 defects flagged, 16/17 hard negatives quiet**, about $0.02 a
+pass. The one negative that fires is a unit whose risky-looking operation acts
+on a trusted value - the kind of call a careful reviewer would also stop on.
 
 ## Limits
 

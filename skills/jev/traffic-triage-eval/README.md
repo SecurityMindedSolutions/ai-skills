@@ -165,32 +165,27 @@ drove the regex and criteria fixes recorded in
 
 ## How to use it
 
-```bash
-# 1. stage events.jsonl (references/schema.md) and app.md (one paragraph: hosts, routes, what the site does NOT run)
-# 2. validate
-python3 scripts/validate.py --events events.jsonl
-# 3. profile only, no API calls
-python3 scripts/evaluate.py --events events.jsonl --app app.md --dry-run
-# 4. run
-python3 scripts/evaluate.py --events events.jsonl --app app.md --out ./out
-#    --ip A --ip B        only these IPs
-#    --from / --to        ISO 8601 window inside the file
-#    --min-requests N     skip one-hit IPs
-#    --labels labels.csv  ip,label for agreement scoring
-#    --carve ...          which verdicts get raw rows in out/investigate/ (default malicious,unclear,attention)
-# one IP with the full profile and every answer
-python3 scripts/classify.py --events events.jsonl --ip 1.2.3.4 --app app.md
-# grow a profile until Jev refuses it
-python3 scripts/limits.py --events events.jsonl --app app.md
-```
+Ask your assistant. *"Who was hitting us last night?"*, *"is this IP an attack
+or a scanner?"*, *"triage yesterday's WAF logs"*. It works out the retrieval
+with you - a cloud CLI, an MCP server, Athena, a SIEM export, a file you
+already have - maps the events into the schema, and runs the rest.
+
+It validates before spending anything and will tell you which optional fields
+came through, because a log export missing `ua`, `host` or `query` has lost
+most of its signal and is worth fixing before the run rather than after. It can
+profile without calling Jev at all, narrow to named IPs or a time window, skip
+one-hit addresses, score against your own labels, and dump the full profile and
+every answer for a single IP when you want to check a verdict.
 
 Needs Python 3.10+ and a TypeSafe key (`TYPESAFE_API_KEY` or
 `~/.config/typesafe/env`). First run creates a private venv for openpyxl.
 
-`app.md` matters: "knows this application" is judged against it. Name the
-hostnames, the route families, the health checks, and what the site does not
-run (WordPress, PHP, `/admin`). Say if static buckets return 200 for unknown
-paths.
+**`app.md` is the part that matters.** "Knows this application" is judged
+against it. Name the hostnames, the route families, the health checks, and what
+the site does *not* run (WordPress, PHP, `/admin`). Say if static buckets
+return 200 for unknown paths. The difference between "background noise" and
+"malicious" is whether the traffic knows your application, and Jev only knows
+your application from that paragraph.
 
 ## What it gets wrong
 

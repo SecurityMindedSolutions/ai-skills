@@ -50,14 +50,10 @@ Inside Claude Code: `/run-jev categorize the modules under src/services
 into these groups ...` or any phrasing that names Jev. The agent does the
 rest and shows you the questions it asked.
 
-By hand:
-
-```bash
-python3 scripts/run.py spec.json results.json --dry-run     # validate + token estimate
-python3 scripts/run.py spec.json results.json --limit 5     # sanity-check a few first
-python3 scripts/run.py spec.json results.json
-python3 scripts/report.py results.json --sort my_group --low-q my_group --csv out.csv
-```
+The agent validates the spec and estimates tokens before spending anything,
+can sanity-check the first few items before committing to the batch, and sorts
+or filters the report by whichever question you care about. Ask for any of
+that in words.
 
 Requirements: Python 3.10+, a TypeSafe API key in `TYPESAFE_API_KEY` or
 `~/.config/typesafe/env`. No packages to install.

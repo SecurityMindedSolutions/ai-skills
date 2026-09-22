@@ -10,6 +10,25 @@ look. Built on TypeSafe's Jev; code does the counting, Jev does the judgment.
 > nothing stood out. Verify in the raw rows before acting. Everything in
 > `mock-data/` is fictional.
 
+## How it works
+
+```mermaid
+flowchart TB
+    A["<b>Validate</b><br/>edge logs in one documented JSON schema<br/>GCLB · ALB · AWS WAF · CloudFront · nginx · anything<br/><i>the agent fills the schema from any source</i>"] --> B["<b>Profile each IP</b> - all in code<br/>counts · span · peak/min · status mix · WAF verdicts<br/>hosts · UA classes · probe and payload families<br/>enumeration · route templates · coverage"]
+    B --> C["<b>Ask Jev</b> - one request per IP<br/>category · ten yes/no signals · threat 0-3<br/>judged against a paragraph describing the site"]
+    C --> D["<b>Score</b> - in code<br/>0-100 threat score · band · attention flag<br/>code-certain floors raise, never lower"]
+    D --> E["<b>Report and carve out</b><br/>two console tables · xlsx / csv / json<br/>raw rows of every flagged IP to investigate/&lt;ip&gt;.jsonl"]
+
+    style A fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style B fill:#1e4a3a,stroke:#4ad990,color:#fff
+    style C fill:#4a3a1e,stroke:#d9a04a,color:#fff
+    style D fill:#1e4a3a,stroke:#4ad990,color:#fff
+    style E fill:#3a1e4a,stroke:#a04ad9,color:#fff
+```
+
+Jev never counts and never reads a timestamp. Everything numeric and temporal
+is settled in code before it is asked what the pattern means.
+
 ## What it does
 
 1. **Validate** a JSONL export in one documented schema
@@ -189,17 +208,3 @@ paths.
   classification can shift an answer; the floors keep a payload on a real
   route malicious whatever the UA says.
 
-## Files
-
-| File | What it is |
-|---|---|
-| `SKILL.md` | Agent instructions |
-| `references/schema.md` | The event schema, with a field-source table for GCLB, ALB and AWS WAF |
-| `references/methodology.md` | Design detail, validation history, measured limits |
-| `scripts/questions.py` | Categories, questions, weights, bands, thresholds, floors |
-| `scripts/signals.py` | Every regex: UA classes, probe families, payload families, WAF label families |
-| `scripts/profile.py` | Per-IP aggregation and token-budget trimming |
-| `scripts/classify.py` | One IP through Jev; score, band, verdict |
-| `scripts/evaluate.py` | The run: validate, profile, classify, report, carve out |
-| `scripts/validate.py`, `schema.py`, `report.py`, `limits.py`, `jev.py`, `bootstrap.py` | Validator, schema, xlsx writer, size probe, HTTP client, venv bootstrap |
-| `mock-data/` | `generate.py`, `events.jsonl`, `labels.csv`, `app.md`, `example-output/` |

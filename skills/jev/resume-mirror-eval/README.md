@@ -92,6 +92,33 @@ rate the candidate's qualifications or fit, on purpose.
 
 ## How it works
 
+```mermaid
+flowchart TB
+    A["<b>Stage</b><br/>one job posting + a folder of resumes<br/>md · pdf · docx · txt"]
+    B["<b>Mirror score</b> - Jev<br/>six fixed questions, one request<br/>copied wording · requirement coverage<br/>concrete detail · template · posting language<br/>skill plausibility"]
+    C["<b>Text match</b> - plain Python<br/>verbatim sentences · longest shared run<br/>acronym coverage · 4-gram reuse · ordering<br/><i>no AI of any kind</i>"]
+    D["<b>Review notes</b> - your agent<br/>two to four bullets from reading the file<br/><i>optional</i>"]
+    E["<b>Spreadsheet</b>, most posting-like first<br/>Needs human review · File · Mirror score<br/>Text match analysis · AI analysis"]
+
+    A --> B
+    A --> C
+    A --> D
+    B --> E
+    C --> E
+    D --> E
+
+    style A fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style B fill:#4a3a1e,stroke:#d9a04a,color:#fff
+    style C fill:#1e4a3a,stroke:#4ad990,color:#fff
+    style D fill:#4a1e3a,stroke:#d94a90,color:#fff
+    style E fill:#3a1e4a,stroke:#a04ad9,color:#fff
+```
+
+The three columns are produced by three different methods and **none of them
+feeds another**, so a reader can see where each number came from and disagree
+with one without discarding the others.
+
+
 Three separate methods, each with its own column. None of them feeds another.
 
 **1. Mirror score (Jev).** For each resume, one request goes to TypeSafe's Jev
@@ -287,16 +314,4 @@ column is the better guide then.
 - The fictional set separates cleanly. That proves the mechanics work, not
 that the method works on real applicants. Real, labelled data is the next
 step.
-
-## Files
-
-
-| File                                                     | What it is                                                                  |
-| -------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [`SKILL.md`](SKILL.md)                                   | Instructions the agent follows, step by step                                |
-| [`scripts/questions.py`](scripts/questions.py)           | Every question, weight and threshold                                        |
-| [`scripts/analyze.py`](scripts/analyze.py)               | The script the agent runs (`python3 scripts/analyze.py --help`)             |
-| [`references/methodology.md`](references/methodology.md) | Why each signal exists and what fools it                                    |
-| [`mock-data/`](mock-data/)                               | Fictional posting, 13 fictional resumes, labels, and a finished example run |
-
 

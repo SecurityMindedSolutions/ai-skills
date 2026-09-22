@@ -88,6 +88,29 @@ happens on fork PRs. Store the key as a repository or organization secret.
 
 ## How it works
 
+```mermaid
+flowchart TB
+    A["<b>Split</b> - scripts/extract.py<br/>every source, Terraform, CI and container file<br/>into units: functions, methods, blocks, config files"] --> B["<b>Compute facts</b> - regex, in code<br/>request input · env config · validation · CSRF<br/>rate limits · secret literals · per-rule patterns"]
+    B --> C["<b>Ask Jev</b> - one request per unit<br/>which class of defect is visible · severity 0-4<br/>the rule's yes/no questions · mitigation · is it production code"]
+    C --> D["<b>Score</b> - in code<br/>vector = product(all) x product(1 - none)<br/>score = severity and vector, minus mitigation"]
+    D --> E["<b>Report</b><br/>ranked candidates · findings.md · SARIF<br/>xlsx / csv / json · PR summary"]
+
+    R[("rules/<br/>22 TOML files<br/>one per class")] -.-> B
+    R -.-> C
+    R -.-> D
+
+    style A fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style B fill:#1e4a3a,stroke:#4ad990,color:#fff
+    style C fill:#4a3a1e,stroke:#d9a04a,color:#fff
+    style D fill:#1e4a3a,stroke:#4ad990,color:#fff
+    style E fill:#3a1e4a,stroke:#a04ad9,color:#fff
+    style R fill:#4a1e3a,stroke:#d94a90,color:#fff
+```
+
+Jev reads **one unit at a time**. It cannot follow a call into another file, so
+a flagged unit is a candidate to trace, not a confirmed vulnerability, and a
+clean unit means "nothing visible in this unit", not "safe".
+
 1. **Inventory** (`scripts/inventory.py`). Walks the target. Classifies each
    file by language and role: `http_handler`, `event_worker`,
    `shared_library`, `frontend`, `infra_terraform`, `infra_manifest`,
@@ -202,6 +225,47 @@ here, not by a question change. `mock-data/sample-repo/app.md` is an
 example.
 
 ## Reading the output
+
+A real run against the bundled mock repository - 10 files, 403 lines, 49 units,
+3.2 seconds, 374k input tokens, **1.6 cents**:
+
+```
+Likely  97.0  supply_chain               Dockerfile:1-7                      [unpinned_supply_chain, insecure_infra_setting]
+Likely  93.0  insecure_configuration     infra/storage.tf:25-31              google_project_iam_member.worker_owner
+Likely  90.3  unsafe_deserialization     api/handlers/documents.py:72-77     restore_snapshot
+Likely  89.9  injection                  api/handlers/documents.py:64-69     convert
+Likely  88.5  path_traversal             api/handlers/documents.py:47-51     download
+Likely  86.0  ssrf                       api/handlers/documents.py:80-84     forward_metrics
+Likely  84.8  weak_cryptography          api/services/auth.py:38-40          make_reset_token
+Review  73.1  tenant_isolation           api/handlers/documents.py:31-37     get_document
+Review  72.3  unsafe_deletion            api/services/cleanup.py:9-13        purge_org_files
+Review  51.2  csrf                       api/handlers/extras.py:28-31        delete_via_link
+
+49 units: Likely 22, Review 8, Note 5, Clean 14   |   29 attention
+```
+
+Each row carries its full reasoning. One finding in JSON:
+
+```json
+{
+  "path": "api/handlers/documents.py", "unit": "restore_snapshot", "lines": "72-77",
+  "category": "unsafe_deserialization", "class_confidence": 1.0,
+  "score": 90.3, "band": "Likely", "attention": true,
+  "severity_level": "High", "severity_expectation": 3.4, "severity_confidence": 0.59,
+  "signals": ["unsafe_deserialization", "upload_unvalidated", "untrusted_reaches_sink",
+              "handles_external_request", "privileged_operation"],
+  "vectors": {
+    "unsafe_deserialization": 0.99, "upload_validation": 0.98, "injection": 0.97,
+    "resource_exhaustion": 0.67, "tenant_isolation": 0.378, "csrf": 0.361, "xss": 0.02
+  }
+}
+```
+
+`vectors` is every rule's score for this unit, not just the winner. A unit that
+scores 0.99 on one rule and 0.97 on another is genuinely both, and the ranked
+list shows only the strongest - open `results.json` when a finding looks
+mis-filed, because the second vector is often the better description.
+
 
 | Column | Meaning |
 |---|---|

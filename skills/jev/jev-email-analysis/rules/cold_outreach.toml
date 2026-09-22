@@ -1,0 +1,19 @@
+# Cold sales outreach: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "cold_outreach"
+title = "Cold sales outreach"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "spam"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Unsolicited one-to-one sales or prospecting sent by a NAMED PERSON (vendor rep, recruiter, agency, investor), pitching a product, service, staffing, meeting or demo - even when short and personal-sounding ('coffee or lunch?', 'quick question', 'Meeting invite, Matt', 'extra hands', fake 'RE:' follow-ups). Wants a sale, not money or credentials."""
+
+[signals.pitch]
+label = "sales pitch language"
+patterns = [
+    '''(?i)\b(quick (question|chat|call)|worth a (chat|call|reply)|book a (demo|call|meeting)|15 minutes|following up on my|circling back|close the loop)\b''',
+]

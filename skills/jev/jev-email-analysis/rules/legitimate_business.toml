@@ -1,0 +1,13 @@
+# Legitimate business mail: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "legitimate_business"
+title = "Legitimate business mail"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "benign"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Genuine mail from the party it claims to be, with requests normal for the relationship: correspondence, invoices at usual details, refunds/credits, scheduling, support - AND automated notifications, receipts, alerts, account/security notices, digests and reports from services or organisations the recipient actually uses or belongs to (ticketing, CI, billing, SaaS, cloud providers, ISACs). Established two-way history plus passing authentication strongly favours this."""

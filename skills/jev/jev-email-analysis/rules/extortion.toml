@@ -1,0 +1,26 @@
+# Extortion: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "extortion"
+title = "Extortion"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Threatens exposure, hacking claims, sextortion, DDoS or data leak unless paid (often crypto)."""
+
+[signals.crypto]
+label = "cryptocurrency address or demand"
+patterns = [
+    '''\b(bc1[a-z0-9]{20,}|[13][a-km-zA-HJ-NP-Z1-9]{25,34}|0x[a-fA-F0-9]{40})\b''',
+    '''(?i)\b(bitcoin|btc|ethereum|monero|usdt|crypto wallet)\b''',
+]
+
+[signals.threat]
+label = "exposure or leak threat"
+patterns = [
+    '''(?i)\b(i (have|recorded|installed)|your (password|webcam|device) (is|was)|will (be )?(publish|leak|release|expose)|ransom|deadline of \d+ hours)\b''',
+]

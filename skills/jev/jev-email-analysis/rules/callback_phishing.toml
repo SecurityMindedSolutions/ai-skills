@@ -1,0 +1,20 @@
+# Callback / TOAD phishing: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "callback_phishing"
+title = "Callback / TOAD phishing"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Telephone-oriented attack: no link or payload, but urges calling a phone number (fake renewal charge, refund, support) where the attacker takes over."""
+
+[signals.call_number]
+label = "phone number as the call to action"
+patterns = [
+    '''(?i)\b(call (us|our|the)|contact (us at|our support)|cancel(l)?ation (line|number)|helpline|toll-?free)\b''',
+    '''(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)''',
+]

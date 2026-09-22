@@ -1,0 +1,25 @@
+# Bulk marketing: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "spam_marketing"
+title = "Bulk marketing"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "spam"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Bulk promotion: newsletters, webinars, event and product marketing, sent from a brand or role address (info@, team@, news@, enews@, marketing@, events@, no-reply@) or in newsletter form, to many recipients. Includes promotional mail from vendors the recipient already uses. No targeted fraud."""
+
+[signals.bulk_markers]
+label = "bulk mail markers"
+patterns = [
+    '''(?i)\b(unsubscribe|manage (your )?preferences|view (this|it) in your browser|email preference cent(er|re)|you (are )?receiv(e|ing) this)\b''',
+]
+
+[signals.role_sender]
+label = "role or no-reply sender"
+patterns = [
+    '''(?i)^[^<]*<?(info|team|news|enews|marketing|events|hello|updates|no-?reply|donotreply|newsletter)@''',
+]

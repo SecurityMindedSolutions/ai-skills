@@ -1,0 +1,13 @@
+# Executive impersonation: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "executive_impersonation"
+title = "Executive impersonation"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Poses as an executive/manager to get an urgent wire, gift cards, confidential favour, or 'are you available? I need a quick task'."""

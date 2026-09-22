@@ -1,0 +1,26 @@
+# Vendor payment fraud (BEC): one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "vendor_payment_fraud"
+title = "Vendor payment fraud (BEC)"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """BEC via a vendor/supplier: changed or new bank details, redirected remittance, or 'pay this outstanding invoice to a new account'. Needs a concrete sign of changed payment details or an identity mismatch; an ordinary quote, invoice or order thread with an established, authenticated vendor is legitimate_business."""
+
+[signals.bank_details]
+label = "new or changed bank details"
+patterns = [
+    '''(?i)\b(new|updated|changed|revised)\s+(bank|account|remittance|payment|wire|beneficiary)''',
+    '''(?i)\b(iban|swift|bic|sort code|routing number|account number)\b''',
+]
+
+[signals.payment_urgency]
+label = "payment plus urgency"
+patterns = [
+    '''(?i)\b(before|by)\s+(close of business|cob|end of day|eod|today|tomorrow)''',
+]

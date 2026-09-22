@@ -1,0 +1,30 @@
+From: "Dana Ruiz" <dana.ruiz@nordwind-supply.example>
+Reply-To: ar.remittance@proton.me
+To: ap@example.com
+Subject: Updated remittance details for invoice 55120
+Date: Mon, 22 Sep 2026 09:14:02 -0400
+Authentication-Results: mx.example.com; spf=fail smtp.mailfrom=nordwind-supply.example; dkim=none; dmarc=fail header.from=nordwind-supply.example
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset="utf-8"
+
+Hi,
+
+Our bank has changed. Please update our remittance details before you process
+invoice 55120 - the old account is closed and payment will bounce.
+
+New account: 4829 5512 8830 1174, sort 40-12-88, IBAN GB29NWBK60161331926819.
+
+Please confirm once updated. Details at https://nordwind-supply-billing.co/remit
+
+Thanks,
+Dana Ruiz
+Accounts Receivable
+
+--b1
+Content-Type: application/pdf; name="remittance-update.pdf"
+Content-Disposition: attachment; filename="remittance-update.pdf"
+
+JVBERi0xLjQK
+--b1--

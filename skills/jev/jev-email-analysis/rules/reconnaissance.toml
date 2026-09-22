@@ -1,0 +1,19 @@
+# Reconnaissance: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "reconnaissance"
+title = "Reconnaissance"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "suspicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Low-content first touch that sets up a LATER fraud, with concrete evidence of it: an identity claim it cannot back (poses as a colleague, executive or known vendor, typically from free-mail or a look-alike domain) or a probe for process and people ('who handles AP / payroll / wire approvals?', 'are you at your desk? need a quick favour'). Pitches nothing. A short or vague subject from a business or marketing sender is NOT enough - that is cold_outreach or spam_marketing."""
+
+[signals.process_probe]
+label = "probe for process or people"
+patterns = [
+    '''(?i)\b(who (handles|is responsible for|approves)|are you (at your desk|available)|quick (favou?r|task|question)|do you have a (minute|moment))\b''',
+]

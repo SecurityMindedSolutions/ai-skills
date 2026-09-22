@@ -109,9 +109,14 @@ def main() -> None:
                 continue
             k = kind(q)
             key = f"{q}_level" if k == "score" else q
-            agree = [(r, e) for r, e in pairs if r["answers"].get(key) == e]
+            def same(r, e):
+                v = r["answers"].get(key)
+                if k == "noul" and isinstance(v, (int, float)):  # noul answers are p(true), expect is a bool
+                    return (v > 0.5) == (str(e).lower() == "true")
+                return v == e
+            agree = [(r, e) for r, e in pairs if same(r, e)]
             print(f"\n**{q}**: {len(agree)}/{len(pairs)} agree")
-            dis = [(r, e) for r, e in pairs if r["answers"].get(key) != e]
+            dis = [(r, e) for r, e in pairs if not same(r, e)]
             if dis:
                 print("\n| id | Jev | p(Jev) | expected | p(expected) |")
                 print("|---|---|---|---|---|")

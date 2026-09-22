@@ -1,0 +1,25 @@
+# Advance fee or prize scam: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "advance_fee_or_prize"
+title = "Advance fee or prize scam"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Promises money, inheritance, prize, investment return or job in exchange for fees or personal details."""
+
+[signals.prize]
+label = "prize, inheritance or windfall"
+patterns = [
+    '''(?i)\b(you have (won|been selected)|lottery|inheritance|beneficiary of|unclaimed (funds|estate)|next of kin|compensation fund)\b''',
+]
+
+[signals.upfront_fee]
+label = "upfront fee to release funds"
+patterns = [
+    '''(?i)\b(processing fee|clearance fee|transfer (charge|fee)|release (the )?funds|administrative charge)\b''',
+]

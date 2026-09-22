@@ -1,0 +1,5 @@
+{
+  "_doc": "Optional. Copy to ~/.config/jev-email-analysis/config.json (or set JEV_EMAIL_CONFIG). Tells Jev who the recipient org is so it can judge internal-impersonation and look-alike claims. Callers can instead pass --org-name / --own-domains.",
+  "org_name": "Example Corp",
+  "own_domains": ["example.com"]
+}

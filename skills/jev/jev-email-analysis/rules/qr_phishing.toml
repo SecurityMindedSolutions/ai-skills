@@ -1,0 +1,19 @@
+# QR code phishing: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "qr_phishing"
+title = "QR code phishing"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Relies on a QR code or an image-only body to carry the lure/link so text filters cannot read it."""
+
+[signals.qr]
+label = "QR code referenced"
+patterns = [
+    '''(?i)\b(qr[ -]?code|scan (the|this) (code|qr)|point your (phone|camera))\b''',
+]

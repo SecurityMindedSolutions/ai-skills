@@ -67,7 +67,7 @@ Before dispatching any module agents, build an understanding of the target appli
 - `{target_path}/README.md`
 - `{target_path}/ARCHITECTURE.md`
 - One level down: `{target_path}/*/CLAUDE.md` (first 200 lines each, stop at 5 files max)
-- `{target_path}/docs/audits/ACCEPTED_RISKS.md` — Previously triaged findings marked as accepted risk. If this file exists, include its contents in the application context passed to sub-agents. Sub-agents MUST NOT re-flag these as new findings. They may reference them as "previously accepted" if the risk profile has materially changed (e.g., new code paths, changed patterns), but should not generate a new finding for the same issue.
+- `{target_path}/docs/audits/ACCEPTED_RISKS.md`, or `{target_path}/architecture-mds/docs/security/ACCEPTED_RISKS.md` where the repo keeps its architecture docs there — Previously triaged findings marked as accepted risk. If this file exists, include its contents in the application context passed to sub-agents. Sub-agents MUST NOT re-flag these as new findings. They may reference them as "previously accepted" if the risk profile has materially changed (e.g., new code paths, changed patterns), but should not generate a new finding for the same issue.
 
 **2c. Read a sample of handler/service code** (use Read):
 - Read 2-3 handler files (first 150 lines each) to understand the handler pattern

@@ -69,7 +69,7 @@ Before dispatching any module agents, build an understanding of the target proje
 - `{target_path}/tsconfig.json` or `{target_path}/tsconfig.app.json` (strict mode, paths)
 - Main CSS file (first 100 lines — reveals design token strategy)
 - Tailwind/PostCSS config if present
-- `{target_path}/docs/audits/ACCEPTED_RISKS.md` — Previously triaged findings marked as accepted risk. If this file exists, include its contents in the front-end context passed to sub-agents. Sub-agents MUST NOT re-flag these as new findings. They may reference them as "previously accepted" if the risk profile has materially changed (e.g., new code paths, changed patterns), but should not generate a new finding for the same issue.
+- `{target_path}/docs/audits/ACCEPTED_RISKS.md`, or `{target_path}/architecture-mds/docs/security/ACCEPTED_RISKS.md` where the repo keeps its architecture docs there — Previously triaged findings marked as accepted risk. If this file exists, include its contents in the front-end context passed to sub-agents. Sub-agents MUST NOT re-flag these as new findings. They may reference them as "previously accepted" if the risk profile has materially changed (e.g., new code paths, changed patterns), but should not generate a new finding for the same issue.
 
 **2c. Produce a front-end context summary** (20-40 lines) covering:
 - **Framework**: React, Vue, Angular, Next.js, etc. + version

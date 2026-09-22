@@ -1,0 +1,19 @@
+# Payroll diversion: one category of the email analysis. Everything the runner knows about this
+# category lives in this file - the option Jev chooses between, the verdict it rolls up to, and
+# any regex facts computed in code and handed to Jev as `code_signals`. Copy this file to add a
+# category. See rules/README.md.
+
+id = "payroll_diversion"
+title = "Payroll diversion"
+
+# The verdict this category produces once risk, flags and the rules in _core.toml are applied.
+verdict = "malicious"
+
+# The option Jev sees in the "what is the primary purpose of this email" choice.
+class = """Asks HR/payroll to change an employee's direct-deposit account, or requests W-2/tax/salary data."""
+
+[signals.direct_deposit]
+label = "direct deposit or tax form request"
+patterns = [
+    '''(?i)\b(direct deposit|payroll (details|account)|w-?2|p60|salary (account|details)|paycheck)\b''',
+]

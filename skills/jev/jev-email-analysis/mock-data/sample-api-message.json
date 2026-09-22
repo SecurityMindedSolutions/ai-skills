@@ -1,0 +1,14 @@
+[{
+ "id": "19a4c1f2b3",
+ "labelIds": ["INBOX", "CATEGORY_PROMOTIONS"],
+ "payload": {
+  "headers": [
+   {"name": "From", "value": "SecOps Weekly <enews@secopsweekly-news.example>"},
+   {"name": "Subject", "value": "This week: 7 lessons from the latest breach"},
+   {"name": "Authentication-Results", "value": "mx.google.com; spf=pass smtp.mailfrom=secopsweekly-news.example; dkim=pass header.d=secopsweekly-news.example; dmarc=pass"}
+  ],
+  "parts": [
+   {"mimeType": "text/html", "body": {"data": "PGh0bWw-PGJvZHk-PHA-SGkgdGhlcmUsIHRoaXMgd2VlaydzIGlzc3VlIGNvdmVycyBzZXZlbiBsZXNzb25zIGZyb20gdGhlIGxhdGVzdCBicmVhY2guPC9wPjxwPjxhIGhyZWY9Imh0dHBzOi8vc2Vjb3Bzd2Vla2x5LW5ld3MuZXhhbXBsZS9pc3N1ZS80MTIiPlJlYWQgdGhlIGlzc3VlPC9hPiBvciA8YSBocmVmPSJodHRwczovL3NlY29wc3dlZWtseS1uZXdzLmV4YW1wbGUvdW5zdWJzY3JpYmUiPnVuc3Vic2NyaWJlPC9hPi48L3A-PC9ib2R5PjwvaHRtbD4="}}
+  ]
+ }
+}]

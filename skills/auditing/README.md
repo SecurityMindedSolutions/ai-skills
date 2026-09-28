@@ -25,6 +25,7 @@ proves it is reachable.
 | **code** | Injection (SQL, command, template), auth/authz gaps, weak crypto, business logic flaws, SSRF, deserialization, path traversal, file-upload and container-format confusion, deletion integrity (partial batch failures, swallowed delete errors, versioned/soft-delete stores, destructive migrations) |
 | **api** | Endpoint auth levels, credential/session revocation propagation through auth caches, fail-open authorization on a missing associated record, input validation, mass assignment, data exposure, filtered-vs-unfiltered accessor bypass, CORS, rate limiting (including self-healing claims tested against a looping trigger), HTTP security headers, CSRF incl. mutating GET routes, unauthenticated content-publication gating, anti-automation/CAPTCHA-enforce, email-action link safety |
 | **frontend** | XSS (`dangerouslySetInnerHTML`, DOM sinks), client-side storage of secrets, postMessage without origin checks, CSP issues |
+| **extension** | Browser extensions (Chrome MV3, Firefox, Safari; runs when a `manifest.json` has `manifest_version`): permission and host scope, extension CSP, `externally_connectable` and message sender validation, confused-deputy content-script messages, content scripts in hostile pages (DOM skimming, closed shadow root leaks, clobbering), token storage (`storage.local`/`session`/`sync`, access level), page content flowing into extension pages and LLMs, remote code and the shipped bundle (rebuilt and hash-diffed), MV3 lifecycle and check-then-inject races, DOM-based extension clickjacking, hidden text and invisible Unicode reaching LLMs, release chain. Runs as three parallel agents on extensions over ~2,000 lines |
 | **multi-tenancy** | Tenant-id provenance, tenant-scoped data access, central fail-closed enforcement, cross-tenant BOLA/IDOR, tenant enumeration oracles, cross-tenant resource sharing, create/delete parity, client-DB-SDK boundary (runs only when the app is multi-tenant) |
 | **secrets** | Hardcoded credentials, committed `.env` files, cloud provider keys (AWS/GCP/Azure), git history leaks, CI/CD secret exposure |
 | **dependencies** | Known CVEs via `pip-audit`/`npm audit`, unpinned versions, supply chain risks, dependency confusion, container base image issues |
@@ -78,6 +79,7 @@ code stays distinguishable from one caused by weak evidence.
 /audit-security code,secrets                 # Two specific modules
 /audit-security all ./src                    # All modules, specific path
 /audit-security terraform ./infra            # One module, specific path
+/audit-security extension ./extension        # Browser extension module only
 /audit-security --include-low                # Include low-confidence findings
 /audit-security api ./svc --trace-scope ../shared-lib,../gateway   # Follow call paths into sibling repos
 /audit-security code ./src --include-low     # Combine all options

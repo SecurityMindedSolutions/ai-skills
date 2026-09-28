@@ -1,5 +1,5 @@
 ---
-description: "Comprehensive security audit with parallel sub-agents. Runs code, API, frontend, multi-tenancy (tenant-isolation), secrets, dependencies, terraform, and CI/CD modules against a target directory. Use this skill whenever the user asks to check for vulnerabilities, do a security review, pen test prep, compliance check, or wants to know if their code is secure - even if they don't say 'audit' explicitly."
+description: "Comprehensive security audit with parallel sub-agents. Runs code, API, frontend, browser extension, multi-tenancy (tenant-isolation), secrets, dependencies, terraform, and CI/CD modules against a target directory. Use this skill whenever the user asks to check for vulnerabilities, do a security review, pen test prep, compliance check, or wants to know if their code is secure - even if they don't say 'audit' explicitly."
 user-invocable: true
 allowed-tools:
   - Task
@@ -8,7 +8,7 @@ allowed-tools:
   - Grep
   - Bash
 metadata:
-  summary: "Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD"
+  summary: "Finds exploitable vulnerabilities across code, APIs, frontend, browser extensions, tenancy, secrets, dependencies, Terraform and CI/CD"
 ---
 
 # Security Audit Orchestrator
@@ -25,7 +25,7 @@ You are a security audit orchestrator. Your job is to dispatch parallel security
 - `--output-format json|markdown`: Output format. Default: `markdown`. When `json`, also write a `audit-security-report-{YYYY-MM-DD}.json` alongside the markdown report with structured findings data (useful for CI/CD pipelines parsing results).
 - `--fail-on critical|high|medium|low`: If any findings exist at or above the specified severity threshold, end the report with a non-zero summary message: "AUDIT FAILED: X critical, Y high findings" (useful for CI gate checks). Without this flag, the report ends normally regardless of findings.
 
-**Available modules**: `code`, `api`, `frontend`, `multi-tenancy`, `secrets`, `dependencies`, `terraform`, `cicd`
+**Available modules**: `code`, `api`, `frontend`, `extension`, `multi-tenancy`, `secrets`, `dependencies`, `terraform`, `cicd`
 
 **Examples**:
 ```
@@ -34,6 +34,7 @@ You are a security audit orchestrator. Your job is to dispatch parallel security
 /audit-security code,secrets                 → two modules, current directory
 /audit-security all ./src                    → all modules, specific path
 /audit-security terraform ./infra            → one module, specific path
+/audit-security extension ./extension        → browser extension module only
 /audit-security --include-low                → all modules, include low-confidence findings
 /audit-security code ./src --include-low     → code module, specific path, include low
 /audit-security --output-format json         → all modules, write both .md and .json reports
@@ -67,6 +68,7 @@ Before dispatching any module agents, build an understanding of the target syste
 - Glob for service boundaries: find all `package.json`, `requirements.txt`, `go.mod`, `Cargo.toml`, `pom.xml`, `Gemfile`, `Dockerfile*` files to identify distinct services/apps
 - Glob for shared code: look for directories named `shared/`, `common/`, `lib/`, `packages/`, `internal/`
 - Glob for infrastructure: `*.tf`, `docker-compose*.yml`, `cloudbuild.yaml`, `.github/workflows/*.yml`
+- Glob for browser extensions: `**/manifest.json` (excluding `node_modules`) containing `manifest_version`. Note source vs built copies (`public/` vs `dist/`).
 - Glob for **live deployment manifests**, independent of the above: `helm/values*.yaml` (or `chart*/values*.yaml`) containing an `ingress:` block, `docker-compose.prod*.yml`, Kubernetes `Deployment`/`Service`/`Ingress` YAML, `serverless.yml`, `Procfile`. A manifest declaring a real ingress/route is ground truth that a service is actually deployed — treat it as such regardless of what any README, architecture doc, or the repo's own name says, and regardless of whether the repo is marked archived on its host (GitHub/GitLab/etc.). An archived-but-still-deployed service is a known, recurring pattern and exactly the kind of thing likely to have been neglected — a reason to prioritize it, not skip it.
 
 **2a-i. Multi-repo / multi-service containers**: if the target path holds many independently-deployable services (a monorepo-of-repos, or a directory of per-service subdirectories) too large to review exhaustively in one pass, any scope narrowing MUST be checked against 2a's deployment-manifest scan before being finalized. Build the full candidate list from live deployment evidence first, *then* narrow by risk (internet-facing, handles auth, etc.) — never narrow by documentation coverage or naming alone, since the undocumented/oddly-named/archived-looking service is disproportionately likely to be the one nobody has audited. If scope is narrowed, explicitly list which discovered services were excluded and why, so a reader can sanity-check the exclusion.
@@ -110,6 +112,7 @@ half the findings.
 - `{target_path}/docker-compose*.yml` (reveals service topology)
 - One level down: `{target_path}/*/CLAUDE.md`, `{target_path}/*/README.md` (first 200 lines of each, stop at 5 files max to stay fast)
 - `{target_path}/docs/audits/ACCEPTED_RISKS.md`, or `{target_path}/architecture-mds/docs/security/ACCEPTED_RISKS.md` where the repo keeps its architecture docs there — Previously triaged findings marked as accepted risk. If this file exists, include its contents in the system context passed to sub-agents. Sub-agents MUST NOT re-flag these as new findings. They may reference them as "previously accepted" if the risk profile has materially changed (e.g., new attack surface, changed controls), but should not generate a new finding for the same issue.
+- **Known gaps are not accepted risks.** Only an item the owner explicitly accepted (in `ACCEPTED_RISKS.md`, or marked "accepted" with a decision/owner in a design doc) is suppressed. A gap a design doc lists as known but still open ("Gap (medium): ... Fix: ..." with no acceptance) MUST still be reported as a finding if the code confirms it is open, tagged `Known gap: {doc}:{line}` in **Current controls**. Suppressing it hides real open risk behind the fact that someone once wrote it down.
 - Any security-design docs the repo happens to expose (glob for `SECURITY.md`, `THREAT_MODEL.md`, `docs/security/**`, `docs/architecture/**` — read up to ~5, first 200 lines each). If present, summarize the documented security invariants/threat model into the system context so sub-agents check against the app's *intended* controls (e.g., "tenant is resolved from the path only", "public payload is an explicit field allowlist"), not just generic patterns. Skip silently if none exist — do not require them.
 
 **2c. Produce a system context summary** — a concise block (aim for 20-40 lines) covering:
@@ -129,6 +132,7 @@ Using the structure discovered in Step 2, determine which modules are relevant:
 - **code**: Always run if `.py`, `.js`, `.ts`, `.go`, `.java` files exist
 - **api**: Run if API route definitions, REST endpoints, or HTTP handlers are found (e.g., `routes_config.py`, `@app.route`, Express routers)
 - **frontend**: Run if `.tsx`, `.jsx`, or React/Vue/Angular files exist
+- **extension**: Run if any `manifest.json` outside `node_modules` contains a `manifest_version` key (Chrome/Firefox/Safari web extension). Record each extension root, and treat any web origin in its `externally_connectable.matches` as a principal that can reach the extension.
 - **multi-tenancy**: Run if the codebase shows multi-tenant partitioning — a tenant boundary field (`tenant_id`, `org_id`, `organization_id`, `workspace_id`, `account_id`, `company_id`) appears in models/queries, OR route paths segment by tenant (`/tenants/`, `/orgs/`, `/organizations/`, `/workspaces/`, `/accounts/`), OR per-tenant storage/keys are provisioned. Skip if the app is single-tenant (no data partitioning by tenant/org/workspace).
 - **secrets**: Always run
 - **dependencies**: Run if `requirements.txt`, `package.json`, `go.mod`, `Cargo.toml`, `pom.xml`, or `Gemfile` exist
@@ -145,6 +149,7 @@ Then for each applicable module, read the module prompt file using the resolved 
 - `{skill_dir}/modules/code.md`
 - `{skill_dir}/modules/api.md`
 - `{skill_dir}/modules/frontend.md`
+- `{skill_dir}/modules/extension.md`
 - `{skill_dir}/modules/multi-tenancy.md`
 - `{skill_dir}/modules/secrets.md`
 - `{skill_dir}/modules/dependencies.md`
@@ -161,6 +166,12 @@ Read all applicable module files in parallel using the Read tool.
 For each applicable module, spawn a sub-agent using the Task tool with `subagent_type: "general-purpose"`.
 
 **CRITICAL**: Launch ALL applicable sub-agents in a SINGLE message with multiple Task tool calls for maximum parallelism.
+
+**Sharding the extension module.** One agent covering all extension categories goes wide and shallow. When the extension's own source (excluding tests, `node_modules`, `dist/`) exceeds ~2,000 lines, dispatch the extension module as three agents, each given the full module text but told to own only its shard and go deep on it:
+- **extension:boundaries** — categories 3, 4, 7, 8 (external and internal messaging, token and session lifecycle, network). Walk every listener and every token read/write.
+- **extension:page** — categories 5, 6, 12, 13 (content scripts, injected UI and clickjacking, untrusted page content flowing inward to extension pages, backend and LLM, privacy, MV3 lifecycle and check-then-inject races). Walk every content script and every `executeScript`.
+- **extension:package** — categories 1, 2, 9, 10, 11 (manifest, CSP, web-accessible resources, remote code and the built bundle, build and release chain).
+Each shard also applies the module's **Tests Expected** section to its own categories. Consolidation merges the three as one module (`extension`). Each shard still returns its own clean-coverage note, so gaps between shards are visible.
 
 Each sub-agent prompt MUST include:
 1. The system context summary (from Step 2)

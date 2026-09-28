@@ -27,7 +27,7 @@ README carries the full detail: usage, options, output format and customization.
 
 | Command | What it does |
 |---|---|
-| [`/audit-security`](skills/auditing/audit-security/) | Finds exploitable vulnerabilities across code, APIs, frontend, tenancy, secrets, dependencies, Terraform and CI/CD |
+| [`/audit-security`](skills/auditing/audit-security/) | Finds exploitable vulnerabilities across code, APIs, frontend, browser extensions, tenancy, secrets, dependencies, Terraform and CI/CD |
 | [`/audit-frontend`](skills/auditing/audit-frontend/) | Reviews client-side architecture: design tokens, components, accessibility, performance, SEO |
 | [`/audit-backend`](skills/auditing/audit-backend/) | Reviews server-side patterns: handler hygiene, service layers, data access, error handling, observability |
 

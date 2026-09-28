@@ -46,6 +46,14 @@ Scan package manifests for known vulnerabilities, outdated packages, and supply 
 - Images from unofficial registries
 - Running as root in container
 
+### 7. Build-Chain Freshness and Audit Coverage
+<!-- Standards: OWASP-Web-A08:2025, CICD-SEC-3 -->
+- Audit gates run with `--omit=dev` / `--production` skip the build toolchain (bundlers, plugins), which writes every shipped byte for frontends and browser extensions. Flag gates that can never see a malicious build dependency.
+- No release-age cooldown (`dependabot.yml` `cooldown`, npm `--before` / `min-release-age`): measure publish-to-lock lag from git history for build-time packages rather than counting all recent packages.
+- `ignore-scripts` unset when nothing in the tree needs lifecycle scripts; check with `npm query ':attr(scripts, [postinstall])'` and `npm audit signatures`.
+- Build steps that run before the audit step completes (pipeline `waitFor` / job ordering).
+- Where the distributed artifact is built and how it reaches users.
+
 ## Scanning Approach
 
 1. Find all package manifest files in the target path

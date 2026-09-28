@@ -85,6 +85,7 @@ This audit was conducted using automated security analysis with the following mo
 - **Code**: Application code review for injection, auth, crypto, business logic, SSRF, and deserialization vulnerabilities
 - **API**: Endpoint authentication, input validation, data exposure, CORS, rate limiting, and error handling
 - **Frontend**: XSS, DOM manipulation, client-side storage, CSP, and React-specific security issues
+- **Extension**: Browser extension manifest and permission scope, message-passing trust, content scripts in hostile pages, token storage, remote code, and release chain
 - **Secrets**: Hardcoded credentials, environment variable exposure, git history, cloud provider keys, and CI/CD secrets
 - **Dependencies**: Known CVEs, outdated packages, version pinning, supply chain risks, and container base images
 - **Terraform**: IAM policies, network security, encryption, public exposure, logging, and state management

@@ -25,6 +25,7 @@ Deep scan for exposed credentials, secrets, and insecure credential management p
 - Default credentials in example/template config files
 - Unencrypted credential storage in application configs
 - Backup files containing secrets (`.bak`, `.old`, `.tmp`)
+- Not a secret: the `key` field in a browser extension `manifest.json` is a public key that pins the extension ID. Do not flag it. The matching private key (`*.pem`) used to pack or sign the extension is a secret if committed.
 
 ### 4. Git History
 <!-- Standards: OWASP-Web-A02:2025 -->

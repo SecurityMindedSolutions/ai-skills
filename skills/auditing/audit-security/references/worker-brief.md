@@ -9,7 +9,7 @@ FALSE POSITIVE RULES — Do NOT report findings that match these:
 4. SSRF path-only: SSRF is only a real finding if the attacker can control the host or protocol. Controlling just the URL path is not exploitable SSRF — **but** only apply this exemption when the code demonstrably treats the input as a path: it's captured as a distinct path segment by a router (not concatenated into an existing base URL), or, if concatenated, the value is validated/parsed first to reject anything that isn't a bare path (reject a leading scheme, `//`, `@`, backslash, and require the result to start with `/`). A value that is concatenated directly onto a base URL string with no such validation is NOT path-only — URL parsers (browsers, `axios`/`fetch`/`urllib`/etc.) reinterpret a leading `@` or `//` in that position as a new host/authority, so "just the path" is actually host control. Apply the same host-confusion scrutiny here as you would to an open-redirect or OAuth `redirect_uri` check — it's the same underlying defect (untrusted string reaches a URL-consuming sink without real parsing/allowlisting), whether the sink is a browser navigation or a server-side outbound request.
 5. Theoretical race conditions: Only flag race conditions with a concrete exploitation path and real impact (e.g., financial double-spend, auth bypass), not theoretical TOCTOU.
 6. Shell script command injection: Only flag if untrusted user input can reach the shell command. Scripts that only use hardcoded values or env vars are not vulnerable.
-7. UUIDs are unguessable. Do not flag UUID-based access as an authorization issue.
+7. UUIDs are unguessable: do not flag an access path whose ONLY weakness is that an attacker would have to guess a random ID. This does not apply when the caller can SET the ID (mass assignment, a body field naming another account/tenant), when the ID is exposed through responses, logs, lists or URLs, or when an operation on the ID has no ownership/tenant check at all — report those.
 8. Client-side auth checks: Missing permission checks in frontend JS/TS are not vulnerabilities — authorization is enforced server-side.
 9. Log content: Logging URLs, request IDs, or non-PII data is not a vulnerability. Only flag logging of secrets, passwords, or PII.
 10. Documentation files: Do not report findings in markdown, text, or documentation files.
@@ -22,9 +22,7 @@ CONFIDENCE SCORING — derived from the trace, per trace-protocol §3. Do not sc
   finding whose path leaves the trace scope.
 - LOW (1-5): Two or more `[assumed]` hops, or the source or sink itself is unverified.
 
-If the falsification pass BREAKS the chain, the candidate is dropped entirely rather than
-downgraded — and recorded in your clean-coverage note per trace-protocol §7, so the next run does
-not re-derive it.
+If the falsification pass finds a breaker you READ (`[verified]`), the candidate is cleared and recorded in your clean-coverage note per trace-protocol §7. A plausible-but-unverified breaker lowers confidence instead; it never removes the finding. Findings held at LOW only by `[assumed]`/`[boundary]` hops are reported under an "Unconfirmed — needs code outside the audited scope" heading.
 
 REPORTING THRESHOLD: your task prompt states it. Default is to report only findings with confidence >= 6 (HIGH or MEDIUM) and drop LOW; when the prompt says LOW findings are included, report all of them.
 
@@ -48,6 +46,15 @@ or "requires an already-privileged caller"), stress-test the claim itself:
   has no rate limit, so a looping caller defeats this bound — treated as
   unbounded/indefinite, not one-shot"). A downgrade that isn't tested this way
   is a guess, not an assessment.
+
+AVAILABILITY FINDINGS — denial of service and resource exhaustion are reportable:
+A DoS or resource-exhaustion finding with a concrete, repeatable trigger is a real finding, normally
+Low or Medium. Examples: a caller-controlled value in a cache key that fragments the cache and forces
+misses plus backend/DB work on every request; an outbound HTTP client with no timeout on a hot path
+(a slow dependency then ties up every worker); no rate limit on an authentication or introspection
+choke point that the whole fleet depends on. Do not clear such a candidate because its impact is
+"only" availability, or because no data is disclosed. Clear it only if you READ a control that stops
+the trigger (a rate limit, a bounded cache keyed on trusted values only, a configured timeout).
 
 OUTPUT FORMAT:
 Return your findings as a markdown list. For each finding, use this exact format:

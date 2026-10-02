@@ -67,6 +67,7 @@ Evaluate whether the application follows clean architecture principles — thin 
 - All outbound HTTP calls (to external APIs, webhooks, third-party services) should have explicit timeouts configured. A missing timeout means a single slow upstream can block the entire request indefinitely.
 - External API failures should be caught and handled gracefully (retry with backoff for transient errors, degrade gracefully for non-critical calls).
 - Database connection pools should have configured size limits and connection timeouts (not defaults).
+- This includes client libraries or SDKs the repo ships for other services to call it. A published client with no default timeout passes the hang on to every consumer.
 - Look for: `requests.get/post()` without `timeout=`, database client creation without pool size or timeout config, external calls without try/except handling.
 - Note: Flag as WARN (not FAIL) — this is a resilience best practice, not a correctness issue.
 

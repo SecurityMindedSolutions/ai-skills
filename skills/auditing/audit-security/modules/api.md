@@ -187,6 +187,14 @@ accessor when it should call the filtered one.
    single request that triggered it, and is worth calling out explicitly as
    an amplifying factor even if the caching itself is a separate root cause.
 
+4. Do NOT flag an unfiltered accessor when the data it returns is static, non-tenant metadata
+   (for example a fixed role or permission catalogue defined in code) that is already distributed to
+   other services or clients in a shipped package or bundle, on a public or private registry. Check
+   this: find where the data is defined and confirm it ships that way (it is in a published package,
+   a frontend bundle, or a repo its consumers can read). Exposing it again
+   over HTTP discloses nothing new. Record it in the clean-coverage note instead. This exemption does
+   not cover per-tenant, per-user or runtime-computed data.
+
 ### 4. CORS & Cross-Origin
 <!-- Standards: OWASP-API8:2023, OWASP-Web-A02:2025 -->
 - Wildcard CORS origins in production
@@ -200,6 +208,9 @@ accessor when it should call the filtered one.
 - Missing pagination limits (can request page_size=999999?)
 - Expensive operations without throttling (report generation, exports, bulk operations)
 - File upload size limits
+
+- Caller-controlled values in cache keys (headers, query params) that let one caller force cache misses and backend work on every request, especially on an auth/introspection choke point
+- Report a concrete, repeatable trigger at Low/Medium per the worker brief's AVAILABILITY FINDINGS rule; "only availability" is not a reason to clear it
 
 **5b. Self-Healing / Bounded-Impact Claims Must Be Tested Against Rate Limiting (dedicated check — do not skip)**
 <!-- Standards: CWE-770, CWE-799 -->

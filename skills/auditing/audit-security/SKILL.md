@@ -2,6 +2,7 @@
 description: "Comprehensive security audit with parallel sub-agents. Runs code, API, frontend, browser extension, multi-tenancy (tenant-isolation), secrets, dependencies, terraform, and CI/CD modules against a target directory. Use this skill whenever the user asks to check for vulnerabilities, do a security review, pen test prep, compliance check, or wants to know if their code is secure - even if they don't say 'audit' explicitly."
 user-invocable: true
 allowed-tools:
+  - Agent
   - Task
   - Read
   - Glob
@@ -44,6 +45,34 @@ You are a security audit orchestrator. Your job is to dispatch parallel security
 ```
 
 ## Execution Process
+
+### Step 0: Worker Setup
+
+Module workers run as the `ai-skills-readonly` agent type when it is installed. Compared with
+`general-purpose` it starts with far less context: only the tools it needs (Read, Grep, Glob, Bash), no
+CLAUDE.md files, and a short system prompt. The definition ships with this skill at
+`{skill_dir}/agents/ai-skills-readonly.md`. Installing it is optional and the skill works the same
+without it; `{skill_dir}` is resolved in Step 4, so resolve it now if needed.
+
+1. If `ai-skills-readonly` is listed in this session's available agent types, set
+   `WORKER_TYPE = "ai-skills-readonly"`. Otherwise set `WORKER_TYPE = "general-purpose"`. Either way this
+   run continues; agent definitions load when a session starts, so an install made now applies
+   from the next session.
+2. Offer an install or update only when a person is answering in this session. Never ask in
+   `claude -p`, CI, a scheduled or autonomous run, and never ask if
+   `~/.claude/.ai-skills-workers-declined` exists. Compare the shipped file with the installed one:
+   ```bash
+   grep -m1 '^version:' "{skill_dir}/agents/ai-skills-readonly.md"
+   grep -m1 '^version:' ~/.claude/agents/ai-skills-readonly.md 2>/dev/null
+   ```
+   - Not installed: show the user the shipped file, then ask.
+   - Installed with a lower version: show `diff ~/.claude/agents/ai-skills-readonly.md "{skill_dir}/agents/ai-skills-readonly.md"`, then ask.
+   - Installed with the same or a higher version: nothing to ask.
+3. Ask with AskUserQuestion: **Install** (recommended) / **Not now** / **Don't ask again**.
+   - Install: `mkdir -p ~/.claude/agents && cp "{skill_dir}/agents/ai-skills-readonly.md" ~/.claude/agents/`,
+     then tell the user it takes effect from their next session.
+   - Don't ask again: `touch ~/.claude/.ai-skills-workers-declined`.
+   - Not now: continue.
 
 ### Step 1: Parse Arguments
 
@@ -141,11 +170,12 @@ Using the structure discovered in Step 2, determine which modules are relevant:
 
 Skip modules that have no applicable files. Log which modules are being run and which are skipped.
 
-### Step 4: Resolve Skill Directory and Read Module Prompts
+### Step 4: Resolve Skill Directory and Module Paths
 
-Resolve the skill directory path by running: `echo $HOME/.claude/skills/audit-security`
+`{skill_dir}` is the directory holding this `SKILL.md`, normally `$HOME/.claude/skills/audit-security`
+(resolve it with `echo $HOME/.claude/skills/audit-security`).
 
-Then for each applicable module, read the module prompt file using the resolved path:
+Each applicable module's prompt lives at:
 - `{skill_dir}/modules/code.md`
 - `{skill_dir}/modules/api.md`
 - `{skill_dir}/modules/frontend.md`
@@ -156,18 +186,24 @@ Then for each applicable module, read the module prompt file using the resolved 
 - `{skill_dir}/modules/terraform.md`
 - `{skill_dir}/modules/cicd.md`
 
-Also read `{skill_dir}/references/trace-protocol.md`. It is **not** a module — it is the shared
-validation method every module uses, and its full text is passed to every sub-agent.
+Every worker also reads two shared files:
+- `{skill_dir}/references/trace-protocol.md`: **not** a module. It is the validation method every
+  module uses, and every worker reads it in full.
+- `{skill_dir}/references/worker-brief.md`: the false-positive rules, confidence scoring, severity
+  calibration and output format every worker follows.
 
-Read all applicable module files in parallel using the Read tool.
+**Do not Read these files yourself.** Confirm they exist with one Glob (or `ls`) of `{skill_dir}/**/*.md`,
+then pass their absolute paths to the workers, which read them. Pasting their text into each
+prompt would load over 20k words into this session and write them out again once per worker, for no
+gain: the worker needs the full text either way.
 
 ### Step 5: Dispatch Sub-Agents in Parallel
 
-For each applicable module, spawn a sub-agent using the Task tool with `subagent_type: "general-purpose"`.
+For each applicable module, spawn a sub-agent with `subagent_type: "{WORKER_TYPE}"` (from Step 0).
 
-**CRITICAL**: Launch ALL applicable sub-agents in a SINGLE message with multiple Task tool calls for maximum parallelism.
+**CRITICAL**: Launch ALL applicable sub-agents in a SINGLE message with multiple Agent tool calls for maximum parallelism.
 
-**Sharding the extension module.** One agent covering all extension categories goes wide and shallow. When the extension's own source (excluding tests, `node_modules`, `dist/`) exceeds ~2,000 lines, dispatch the extension module as three agents, each given the full module text but told to own only its shard and go deep on it:
+**Sharding the extension module.** One agent covering all extension categories goes wide and shallow. When the extension's own source (excluding tests, `node_modules`, `dist/`) exceeds ~2,000 lines, dispatch the extension module as three agents, each reading the full module file but told to own only its shard and go deep on it:
 - **extension:boundaries** — categories 3, 4, 7, 8 (external and internal messaging, token and session lifecycle, network). Walk every listener and every token read/write.
 - **extension:page** — categories 5, 6, 12, 13 (content scripts, injected UI and clickjacking, untrusted page content flowing inward to extension pages, backend and LLM, privacy, MV3 lifecycle and check-then-inject races). Walk every content script and every `executeScript`.
 - **extension:package** — categories 1, 2, 9, 10, 11 (manifest, CSP, web-accessible resources, remote code and the built bundle, build and release chain).
@@ -175,128 +211,41 @@ Each shard also applies the module's **Tests Expected** section to its own categ
 
 Each sub-agent prompt MUST include:
 1. The system context summary (from Step 2)
-2. The full module prompt content (read from the module file)
-3. **The full text of `references/trace-protocol.md`** — every module validates findings the same way, so this is passed verbatim to every sub-agent, not summarized
-4. The target path to scan, and the trace scope (target path + any `--trace-scope` roots)
-5. The standardized output format
+2. The absolute paths of its module file, `trace-protocol.md` and `worker-brief.md`, with the
+   instruction to read all three in full before doing anything else
+3. The target path to scan, and the trace scope (target path + any `--trace-scope` roots)
+4. The reporting threshold (from `--include-low`) and, for an extension shard, the categories it owns
 
 **Sub-agent prompt template**:
 ```
-You are conducting a security audit. Your module is: {MODULE_NAME}
+You are conducting a security audit. Your module is: {MODULE_NAME}{, shard: {SHARD_NAME}, owning only categories {LIST}}
 
 TARGET PATH (findings are reported only against files here): {target_path}
 TRACE SCOPE (you may READ anything here to follow a path; do not report findings outside TARGET PATH): {target_path}{, plus each --trace-scope root, each named}
 {If no --trace-scope roots were supplied and the recon found sibling components the paths may reach, add: "NOTE: the following components appear reachable from the target but were NOT supplied for tracing — treat any path into them as a [boundary] hop: {list}. Say so in the finding, per the trace protocol."}
+
+YOUR INSTRUCTIONS: read these three files in full, in this order, before you look at any target
+code. They are binding instructions for this task, not reference material, and your output is
+checked against them:
+1. {skill_dir}/modules/{module}.md: what to check
+2. {skill_dir}/references/trace-protocol.md: how every finding is validated
+3. {skill_dir}/references/worker-brief.md: false-positive rules, confidence, severity calibration, output format
+
+TRACE PROTOCOL — this is a GATE on every finding, not documentation. Apply it before you report
+anything. A candidate you have not traced is an observation, not a finding; the falsification pass
+in §5 is what tells you whether it is real. Findings are reported with a `**Trace:**` field in the
+format defined in §6, and your confidence score is derived from the weakest verification marker on
+the chain per §3 — it is not a separate judgement.
+
+REPORTING THRESHOLD: {If --include-low: "LOW confidence findings are included: report ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."}
 
 SYSTEM CONTEXT (discovered by orchestrator — use this to understand the architecture):
 {SYSTEM_CONTEXT_SUMMARY}
 
 Use the system context above to understand how components interact. When tracing data flows or trust boundaries, consider how input in one service may reach another. If the system context is sparse, read CLAUDE.md or README.md files in the target path for additional context.
 
-{MODULE_PROMPT_CONTENT}
-
-TRACE PROTOCOL — this is a GATE on every finding, not documentation. Read it in full and apply it
-before you report anything. A candidate you have not traced is an observation, not a finding; the
-falsification pass in §5 is what tells you whether it is real. Findings are reported with a
-`**Trace:**` field in the format defined in §6, and your confidence score is derived from the
-weakest verification marker on the chain per §3 — it is not a separate judgement.
-
-{TRACE_PROTOCOL_CONTENT}
-
-FALSE POSITIVE RULES — Do NOT report findings that match these:
-1. Test files: Vulnerabilities in unit tests or test-only code are not exploitable.
-2. React/Angular XSS: These frameworks auto-escape output. Only flag XSS if using `dangerouslySetInnerHTML`, `bypassSecurityTrustHtml`, `v-html`, or similar explicit bypass methods.
-3. Environment variables and CLI flags are trusted inputs. Do not flag code that uses env vars or CLI args as "user-controlled input."
-4. SSRF path-only: SSRF is only a real finding if the attacker can control the host or protocol. Controlling just the URL path is not exploitable SSRF — **but** only apply this exemption when the code demonstrably treats the input as a path: it's captured as a distinct path segment by a router (not concatenated into an existing base URL), or, if concatenated, the value is validated/parsed first to reject anything that isn't a bare path (reject a leading scheme, `//`, `@`, backslash, and require the result to start with `/`). A value that is concatenated directly onto a base URL string with no such validation is NOT path-only — URL parsers (browsers, `axios`/`fetch`/`urllib`/etc.) reinterpret a leading `@` or `//` in that position as a new host/authority, so "just the path" is actually host control. Apply the same host-confusion scrutiny here as you would to an open-redirect or OAuth `redirect_uri` check — it's the same underlying defect (untrusted string reaches a URL-consuming sink without real parsing/allowlisting), whether the sink is a browser navigation or a server-side outbound request.
-5. Theoretical race conditions: Only flag race conditions with a concrete exploitation path and real impact (e.g., financial double-spend, auth bypass), not theoretical TOCTOU.
-6. Shell script command injection: Only flag if untrusted user input can reach the shell command. Scripts that only use hardcoded values or env vars are not vulnerable.
-7. UUIDs are unguessable. Do not flag UUID-based access as an authorization issue.
-8. Client-side auth checks: Missing permission checks in frontend JS/TS are not vulnerabilities — authorization is enforced server-side.
-9. Log content: Logging URLs, request IDs, or non-PII data is not a vulnerability. Only flag logging of secrets, passwords, or PII.
-10. Documentation files: Do not report findings in markdown, text, or documentation files.
-11. CI/CD pipeline variables: Build-time variables injected by CI systems ($CI_*, $GITHUB_*, $BUILDKITE_*) are not secrets and should not be flagged as hardcoded credentials.
-
-CONFIDENCE SCORING — derived from the trace, per trace-protocol §3. Do not score on impression:
-- HIGH (8-10): Every hop on the chain is `[verified]`. You walked the whole path and read each step.
-- MEDIUM (6-7): The chain holds but carries at least one `[inferred]`, `[assumed]`, or `[boundary]`
-  hop on the authorization, reachability, or input-control segment. This is the ceiling for any
-  finding whose path leaves the trace scope.
-- LOW (1-5): Two or more `[assumed]` hops, or the source or sink itself is unverified.
-
-If the falsification pass BREAKS the chain, the candidate is dropped entirely rather than
-downgraded — and recorded in your clean-coverage note per trace-protocol §7, so the next run does
-not re-derive it.
-
-{If --include-low: "Include ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."}
-
-SEVERITY CALIBRATION — Testing "Bounded"/"Mitigating" Claims:
-Before writing anything into **Current controls** that would lower a finding's
-severity (a claim that impact is "bounded," "self-healing," "low-probability,"
-or "requires an already-privileged caller"), stress-test the claim itself:
-- If the claim rests on a time window (a cache TTL, a reconciliation/resync
-  interval, a token expiry) — could the attacker simply repeat the triggering
-  action faster than that window, making the "bounded" impact actually
-  unbounded/indefinite? Check whether the trigger has its own rate limit or
-  auth gate before accepting the bound as real.
-- If the claim rests on "the caller must already hold valid credentials" —
-  does holding those credentials grant only ordinary access, or does the
-  finding itself grant something beyond what those credentials should allow
-  (privilege escalation, cross-tenant access, disabling a security control)?
-  A precondition of "authenticated" does not make a privilege-escalation or
-  cross-tenant finding low severity.
-- Write the mitigating claim AND the stress-test result into **Current
-  controls** explicitly (e.g., "resyncs every 15 min, but the reset endpoint
-  has no rate limit, so a looping caller defeats this bound — treated as
-  unbounded/indefinite, not one-shot"). A downgrade that isn't tested this way
-  is a guess, not an assessment.
-
-OUTPUT FORMAT:
-Return your findings as a markdown list. For each finding, use this exact format:
-
-### {SEVERITY}-{NUMBER}: {Title}
-
-**Status:** OPEN
-**File:** `{relative_path}:{line_number}`
-**Affected files:** List ALL files that would need changes to remediate this finding, not just the primary file. Use relative paths. If only one file, repeat the primary file.
-**Severity:** Critical | High | Medium | Low | Informational
-**Confidence:** HIGH | MEDIUM | LOW
-**Exposure:** {How this finding is actually reachable, independent of severity — one of: "Public-facing" (reachable from the open internet with no network-level gate), "Internal-network-reachable" (requires being on the VPC/mesh/internal network already, but no further credentials), "Auth-gated-internal" (requires both internal network access AND a valid credential/session). Base this on real deployment evidence (ingress/ALB scheme, security group rules, service mesh config) discovered in Step 2, not on assumption from the repo's name or docs. This is a distinct axis from Severity — an Internal-network-reachable finding can still be Critical if its impact is severe; the field exists so prioritization can weigh "how bad" and "how reachable" separately instead of one field trying to encode both.}
-**Category:** {category from module}
-**Standards:** {List the standards/frameworks this finding maps to, from the `<!-- Standards: -->` comment on the category header. Example: "OWASP-Web-A05:2025, CWE-89". If no comment exists, infer the most applicable standard.}
-**Description:** {What the vulnerability is and why it matters — be specific about the mechanism}
-**Evidence:**
-```{language}
-{Actual code snippet showing the vulnerability. Include enough surrounding context (function name, relevant variables) that a developer can locate and understand it without opening the file.}
-```
-**Trace:** {REQUIRED. The validated path, in the format defined in trace-protocol §6: the shape
-(dataflow | reachability | control-failure), a one-line statement of the path, then one numbered
-hop per step — each with `file:line` and a `[verified]` / `[inferred]` / `[assumed]` / `[boundary]`
-marker — followed by a `**Breaks if:**` line naming the control that would defeat the chain and
-where you confirmed it is absent or insufficient. Hop count equals real path length; a
-same-line source and sink is a one-hop trace. Evidence shows WHERE the defect is; Trace shows THAT
-it is reachable, and is what makes the finding checkable by someone who did not do the work.}
-**Current controls:** {What security measures are ALREADY in place that partially mitigate this risk — e.g., "input is tenant-scoped so only affects the attacker's own tenant", "WAF blocks common payloads at the edge", "data source is trusted (Secret Manager)". Write "None" if no mitigations exist. This field helps prioritize — a finding with strong existing controls is lower real-world risk.}
-**Exploit scenario:** {Step-by-step attack scenario: (1) attacker does X, (2) this causes Y, (3) resulting in Z impact. Be concrete — name the endpoint, parameter, or field involved. This is the Trace told as a story and MUST NOT contain a step the Trace does not support — if it does, either the trace is incomplete (go finish it) or the step is speculation (cut it). Start from the weakest principal for which the path holds, and state it.}
-**Fix:** {Implementation-ready remediation. Include:
-- Which files to modify and what to change in each
-- Specific function/method names to update
-- Code pattern to use (e.g., "replace f-string with parameterized query using `:param` syntax")
-- Any config changes needed (Terraform, env vars, etc.)
-- Order of operations if changes span multiple files/services
-This should be detailed enough that a coding agent can implement the fix without re-reading the vulnerable code from scratch.}
-
-If you find no issues for a category, do not include it. Only report real findings, not theoretical concerns. Prioritize findings that are actually exploitable over pattern-matching noise.
-
-At the end, include BOTH of the following:
-
-1. A clean-coverage note — a short section listing what you checked and cleared, especially any
-   candidate the falsification pass killed and the specific fact that killed it (a global control
-   that supplies the missing guard, an upstream type constraint, a package that is never loaded).
-   State it as "checked X, holds because Y", not as an absence. This is what distinguishes "the
-   audit did not look" from "the audit looked and it holds", and it stops the next run
-   re-investigating the same dead end.
-2. The summary count:
-**{MODULE_NAME} Module Summary**: X Critical, X High, X Medium, X Low, X Informational
+Return only the findings, the clean-coverage note and the module summary line, in the format
+worker-brief.md defines.
 ```
 
 ### Step 6: Consolidate Report

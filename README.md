@@ -108,6 +108,10 @@ in `modules/` and their shared validation method in `references/`, and the Ralph
 ships `ralph.sh` alongside its templates. The directory name is the command name, so
 keep it as it is.
 
+The audits and the vulnerability remediator also ship an optional worker agent in their
+`agents/` folder. They offer to install it to `~/.claude/agents/` on first run, which makes
+each sub-agent start lighter; the category READMEs explain what it changes.
+
 Start a new Claude Code session, then type the command. The category README linked
 beside each table above covers that skill's options and output. Three need outside tools:
 `/github-remediate-vulns` needs the `gh` CLI, `/built-with` needs Python 3, `curl`

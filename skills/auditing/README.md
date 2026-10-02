@@ -9,7 +9,32 @@ something is *exploitable*, while the frontend and backend audits ask whether th
 
 To add a module to any of them, drop a new `.md` file in that skill's `modules/`
 following the existing format and add the module name to its `SKILL.md`. To change
-the report layout, edit the skill's `templates/report.md`.
+the report layout, edit the skill's `templates/report.md`. The scoring scale and the
+format each module worker returns live in `references/worker-brief.md`.
+
+### Lighter workers (optional)
+
+Each module runs in its own sub-agent. By default that is Claude Code's
+`general-purpose` agent, which starts with every tool your session has (MCP servers
+included), the full default system prompt and your CLAUDE.md files, once per module.
+
+Each audit ships `agents/ai-skills-readonly.md`, a worker definition with only Read,
+Grep, Glob and Bash, no CLAUDE.md and a short system prompt. The first time an audit
+runs without it installed, it offers to copy it to `~/.claude/agents/` and shows you the
+file first. Pick **Don't ask again** to stop the offer. It takes effect from your next
+session. To install it by hand:
+
+```bash
+mkdir -p ~/.claude/agents
+cp ~/.claude/skills/audit-security/agents/ai-skills-readonly.md ~/.claude/agents/
+```
+
+All three audits share the same file. Read-only is enforced by the tool list for file
+edits, but Bash is unrestricted so the scanners can run; the "never modify the target"
+rule for Bash is an instruction, not a sandbox.
+
+The orchestrator also passes each worker the *paths* of its module and brief rather than
+pasting their text, so the main session never loads every module's checks.
 
 ---
 

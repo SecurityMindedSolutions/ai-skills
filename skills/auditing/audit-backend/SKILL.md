@@ -2,6 +2,7 @@
 description: "Backend application architecture audit. Checks handler hygiene, service layer patterns, data access, data contracts, error handling, code quality, testing, observability, and security against enterprise standards. Use this skill whenever the user wants to review backend code quality, check API patterns, validate architecture, or assess whether their backend follows best practices - even if they don't explicitly say 'audit'."
 user-invocable: true
 allowed-tools:
+  - Agent
   - Task
   - Read
   - Glob
@@ -35,6 +36,34 @@ You are a backend application audit orchestrator. Your job is to dispatch parall
 ```
 
 ## Execution Process
+
+### Step 0: Worker Setup
+
+Module workers run as the `ai-skills-readonly` agent type when it is installed. Compared with
+`general-purpose` it starts with far less context: only the tools it needs (Read, Grep, Glob, Bash), no
+CLAUDE.md files, and a short system prompt. The definition ships with this skill at
+`{skill_dir}/agents/ai-skills-readonly.md`. Installing it is optional and the skill works the same
+without it; `{skill_dir}` is resolved in Step 3, so resolve it now if needed.
+
+1. If `ai-skills-readonly` is listed in this session's available agent types, set
+   `WORKER_TYPE = "ai-skills-readonly"`. Otherwise set `WORKER_TYPE = "general-purpose"`. Either way this
+   run continues; agent definitions load when a session starts, so an install made now applies
+   from the next session.
+2. Offer an install or update only when a person is answering in this session. Never ask in
+   `claude -p`, CI, a scheduled or autonomous run, and never ask if
+   `~/.claude/.ai-skills-workers-declined` exists. Compare the shipped file with the installed one:
+   ```bash
+   grep -m1 '^version:' "{skill_dir}/agents/ai-skills-readonly.md"
+   grep -m1 '^version:' ~/.claude/agents/ai-skills-readonly.md 2>/dev/null
+   ```
+   - Not installed: show the user the shipped file, then ask.
+   - Installed with a lower version: show `diff ~/.claude/agents/ai-skills-readonly.md "{skill_dir}/agents/ai-skills-readonly.md"`, then ask.
+   - Installed with the same or a higher version: nothing to ask.
+3. Ask with AskUserQuestion: **Install** (recommended) / **Not now** / **Don't ask again**.
+   - Install: `mkdir -p ~/.claude/agents && cp "{skill_dir}/agents/ai-skills-readonly.md" ~/.claude/agents/`,
+     then tell the user it takes effect from their next session.
+   - Don't ask again: `touch ~/.claude/.ai-skills-workers-declined`.
+   - Not now: continue.
 
 ### Step 1: Parse Arguments
 
@@ -102,11 +131,11 @@ If the user requested `all` modules (the default), use the structure discovered 
 
 If the user explicitly requested specific modules, run exactly those modules regardless of auto-detection.
 
-### Step 3: Resolve Skill Directory and Read Module Prompts
+### Step 3: Resolve Skill Directory and Module Paths
 
 Resolve the skill directory path by running: `echo $HOME/.claude/skills/audit-backend`
 
-Then for each applicable module, read the module prompt file using the resolved path:
+Each applicable module's prompt lives at:
 - `{skill_dir}/modules/architecture.md`
 - `{skill_dir}/modules/errors.md`
 - `{skill_dir}/modules/data-access.md`
@@ -116,19 +145,22 @@ Then for each applicable module, read the module prompt file using the resolved 
 - `{skill_dir}/modules/observability.md`
 - `{skill_dir}/modules/security.md`
 
-Read all applicable module files in parallel using the Read tool.
+**Do not Read the module files yourself.** Confirm they exist with one Glob (or `ls`) of
+`{skill_dir}/**/*.md`, then pass the absolute paths to the workers, which read them. Every worker
+also reads `{skill_dir}/references/worker-brief.md`, which holds the scoring scale and output
+format. Pasting this text into each prompt would load it into this session and write it out again
+once per worker, for no gain: the worker needs the full text either way.
 
 ### Step 4: Dispatch Sub-Agents in Parallel
 
-For each applicable module, spawn a sub-agent using the Task tool with `subagent_type: "general-purpose"`.
+For each applicable module, spawn a sub-agent with `subagent_type: "{WORKER_TYPE}"` (from Step 0).
 
-**CRITICAL**: Launch ALL applicable sub-agents in a SINGLE message with multiple Task tool calls for maximum parallelism.
+**CRITICAL**: Launch ALL applicable sub-agents in a SINGLE message with multiple Agent tool calls for maximum parallelism.
 
 Each sub-agent prompt MUST include:
 1. The application context summary (from Step 2)
-2. The full module prompt content (read from the module file)
+2. The absolute paths of its module file and `worker-brief.md`, with the instruction to read both in full first
 3. The target path to scan
-4. The standardized output format (below)
 
 **Sub-agent prompt template**:
 ```
@@ -136,36 +168,18 @@ You are conducting a backend application architecture audit. Your module is: {MO
 
 TARGET PATH: {target_path}
 
+YOUR INSTRUCTIONS: read these two files in full, in this order, before you look at any target
+code. They are binding instructions for this task, not reference material, and your output is
+checked against them:
+1. {skill_dir}/modules/{module}.md: what to check
+2. {skill_dir}/references/worker-brief.md: how to score each item and the exact output format
+
 APPLICATION CONTEXT (discovered by orchestrator):
 {APPLICATION_CONTEXT_SUMMARY}
 
 Use the context above to understand the application's conventions and patterns. Evaluate against enterprise best practices, but calibrate your expectations to the project's scale and constraints. A personal-scale project with 3 services doesn't need the same abstractions as a 50-service platform — but it should still follow clean architecture principles proportionally.
 
-{MODULE_PROMPT_CONTENT}
-
-SCORING:
-For each assertion in your module, evaluate the codebase and assign one of:
-- PASS: The assertion holds. Code meets the standard.
-- FAIL: The assertion is violated. Include file path, line number, and what's wrong.
-- WARN: Not violated but trending toward a problem. Include what to watch.
-- N/A: The assertion doesn't apply to this codebase.
-
-OUTPUT FORMAT:
-Return your findings as markdown. For each assertion:
-
-### {MODULE_PREFIX}-{NUMBER}: {Assertion title}
-
-**Result:** PASS | FAIL | WARN | N/A
-**File(s):** `{relative_path}:{line_number}` (or "N/A")
-**Evidence:**
-```{language}
-{Actual code snippet if FAIL or WARN. Show enough context to understand the issue.}
-```
-**Analysis:** {Why this passes, fails, or warrants a warning. Be specific — reference actual code patterns, not abstract principles.}
-**Fix:** {If FAIL or WARN: implementation-ready remediation. Which files, what to change, code pattern to use. If PASS: omit this field.}
-
-At the end, include:
-**{MODULE_NAME} Summary**: X PASS, X FAIL, X WARN, X N/A
+Return only the output worker-brief.md defines.
 ```
 
 ### Step 5: Consolidate Report

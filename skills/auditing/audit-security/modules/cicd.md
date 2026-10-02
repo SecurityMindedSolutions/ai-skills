@@ -33,6 +33,7 @@ Review CI/CD pipeline configurations for security misconfigurations, credential 
 - Is there separation between build and deploy stages?
 - Are production deployments restricted to specific branches?
 - Is force-push to protected branches blocked (detectable from branch protection rules in IaC)?
+- Can GitHub Actions approve pull requests (repo or org setting "Allow GitHub Actions to create and approve pull requests", checkable with a read-only `gh api repos/{owner}/{repo}/actions/permissions/workflow`)? Combined with an empty or missing `CODEOWNERS`, a workflow token can satisfy required review on its own. **Report this as its own finding.** Do not fold it into a broader branch-protection or permissions finding.
 
 **3b. Template / Upstream Sync Workflows (dedicated check — do not skip)**
 <!-- Standards: CICD-SEC-1, CICD-SEC-4, CICD-SEC-3 -->
@@ -53,6 +54,7 @@ finding, normally Low to Medium depending on what the CI can reach.
 ### 4. Artifact Integrity
 <!-- Standards: CICD-SEC-9, OWASP-Web-A08 -->
 - Are Docker images referenced by digest (`@sha256:...`) in deployment configs?
+- Does any deploy step reuse an existing image by a mutable tag (`:latest`, `:main`, a branch or version tag that can be re-pushed) instead of building it in the same run or verifying it by digest? Whoever can push that tag to the registry chooses what gets deployed. **Report this as its own finding.** Do not fold it into a general image-pinning or base-image finding.
 - Are lockfiles (`package-lock.json`, `requirements.txt` with hashes) verified during CI builds (`npm ci`, not `npm install`)?
 - Are build artifacts signed or checksummed?
 - Is there a `--frozen-lockfile` or `npm ci` pattern in CI (prevents dependency modification during build)?

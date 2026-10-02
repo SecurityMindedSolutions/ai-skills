@@ -24,7 +24,7 @@ CONFIDENCE SCORING — derived from the trace, per trace-protocol §3. Do not sc
 
 If the falsification pass finds a breaker you READ (`[verified]`), the candidate is cleared and recorded in your clean-coverage note per trace-protocol §7. A plausible-but-unverified breaker lowers confidence instead; it never removes the finding. Findings held at LOW only by `[assumed]`/`[boundary]` hops are reported under an "Unconfirmed — needs code outside the audited scope" heading.
 
-REPORTING THRESHOLD: your task prompt states it. Default is to report only findings with confidence >= 6 (HIGH or MEDIUM) and drop LOW; when the prompt says LOW findings are included, report all of them.
+REPORTING THRESHOLD: your task prompt states it. Default is to report only findings with confidence >= 6 (HIGH or MEDIUM) and drop LOW; when the prompt says LOW findings are included, report all of them. One exception that holds at every threshold: a finding held at LOW only by `[assumed]`/`[boundary]` hops, or reported at LOW because its trace could not be completed, is never dropped. Return it in full under an `## Unconfirmed` heading after your other findings, naming the missing component or the unfinished hop.
 
 SEVERITY CALIBRATION — Testing "Bounded"/"Mitigating" Claims:
 Before writing anything into **Current controls** that would lower a finding's
@@ -46,6 +46,11 @@ or "requires an already-privileged caller"), stress-test the claim itself:
   has no rate limit, so a looping caller defeats this bound — treated as
   unbounded/indefinite, not one-shot"). A downgrade that isn't tested this way
   is a guess, not an assessment.
+
+SELF-EXPOSURE IS HARDENING: an endpoint that returns a credential's or account's own record only
+to the holder of that credential, containing no secret the holder does not already have, is
+Informational, not Low. This does not apply if the record includes a stored hash, signing material,
+another principal's or tenant's data, or anything the holder could not already read.
 
 AVAILABILITY FINDINGS — denial of service and resource exhaustion are reportable:
 A DoS or resource-exhaustion finding with a concrete, repeatable trigger is a real finding, normally

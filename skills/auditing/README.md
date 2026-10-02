@@ -88,7 +88,8 @@ documentation:
   actually read (`[verified]`); it is then recorded under **Verified Clean** so future
   runs do not re-derive it. A breaker that is only plausible (inferred, assumed, out of
   scope, or a general argument like "IDs are hard to guess") lowers confidence instead,
-  and a finding held low only by out-of-scope hops is still reported as unconfirmed.
+  and a finding held low only by out-of-scope hops is still listed in the report's
+  **Unconfirmed** section.
   Nothing is dropped silently.
 - **Availability counts.** A denial-of-service or resource-exhaustion finding with a
   concrete, repeatable trigger is reported, normally at Low or Medium.
@@ -133,7 +134,9 @@ a step-by-step exploit scenario, and implementation-ready fix instructions.
 Confidence is **HIGH** (8-10) for a clear vulnerability with a concrete attack path,
 **MEDIUM** (6-7) for a suspicious pattern likely exploitable under specific conditions,
 and **LOW** (1-5) for a theoretical concern. Low is excluded by default; pass
-`--include-low` to see everything.
+`--include-low` to see everything. The exception is the **Unconfirmed** section: findings
+held low only because their path runs through code outside the audit's scope are always
+listed there, one line each by default and in full with `--include-low`.
 
 Each finding carries its file and line number, all affected files rather than just the
 primary one, an **Exposure** rating (public-facing, internal-network-reachable, or

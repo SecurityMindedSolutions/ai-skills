@@ -60,6 +60,15 @@
 
 ---
 
+## Unconfirmed
+
+Findings that were not disproven but could not be verified, because their path runs through code
+outside this audit's scope or their trace could not be completed. Each names what kept it at low
+confidence. Supplying that code (for example with `--trace-scope`) is how to confirm or clear it.
+These are not counted in the tables above.
+
+{UNCONFIRMED_FINDINGS}
+
 ## Verified Clean
 
 What was checked and found sound, including candidates that were investigated and ruled out with
@@ -86,13 +95,15 @@ This audit was conducted using automated security analysis with the following mo
 - **API**: Endpoint authentication, input validation, data exposure, CORS, rate limiting, and error handling
 - **Frontend**: XSS, DOM manipulation, client-side storage, CSP, and React-specific security issues
 - **Extension**: Browser extension manifest and permission scope, message-passing trust, content scripts in hostile pages, token storage, remote code, and release chain
+- **Multi-tenancy**: Tenant isolation: tenant resolution, cross-tenant object access, per-tenant storage and keys
 - **Secrets**: Hardcoded credentials, environment variable exposure, git history, cloud provider keys, and CI/CD secrets
 - **Dependencies**: Known CVEs, outdated packages, version pinning, supply chain risks, and container base images
 - **Terraform**: IAM policies, network security, encryption, public exposure, logging, and state management
+- **CI/CD**: Workflow permissions and triggers, action pinning, approval gates, template sync, artifact integrity, and pipeline credentials
 
 Each module was executed as an independent sub-agent that read architecture documentation, scanned relevant files, and applied both pattern-based and contextual analysis. Findings were deduplicated and consolidated across modules.
 
-**Every finding was validated by tracing, not by pattern match alone.** A candidate line only becomes a finding once the path around it has been walked: for a dataflow issue, from the untrusted source through every boundary and propagation frame to the sink; for a reachability issue, from the weakest principal that can reach it through each access and privilege hop to the capability; for a control failure, from the control's definition to the concrete input it wrongly admits. Each hop is cited with `file:line` and marked as verified (read directly), inferred (derived from something read), assumed (not checkable) or boundary (path left the available code). Confidence is derived from the weakest marker on the chain rather than scored by impression, and each finding carries a `Breaks if:` line naming the control that would refute it and where that control was confirmed absent or insufficient. Candidates whose chain broke under that check were dropped rather than downgraded, and are listed under Verified Clean.
+**Every finding was validated by tracing, not by pattern match alone.** A candidate line only becomes a finding once the path around it has been walked: for a dataflow issue, from the untrusted source through every boundary and propagation frame to the sink; for a reachability issue, from the weakest principal that can reach it through each access and privilege hop to the capability; for a control failure, from the control's definition to the concrete input it wrongly admits. Each hop is cited with `file:line` and marked as verified (read directly), inferred (derived from something read), assumed (not checkable) or boundary (path left the available code). Confidence is derived from the weakest marker on the chain rather than scored by impression, and each finding carries a `Breaks if:` line naming the control that would refute it and where that control was confirmed absent or insufficient. A candidate was cleared only when the control that breaks its chain was read directly; those are listed under Verified Clean. A breaker that was only plausible lowered confidence instead, and findings held low only by code outside the audited scope are listed under Unconfirmed rather than dropped.
 
 ## Finding Format Reference
 
@@ -125,4 +136,4 @@ Findings progress through these statuses during triage:
 | RESOLVED | Fix implemented and deployed |
 | ACCEPTED RISK | Risk acknowledged, no fix planned — see remediation notes for rationale |
 
-Findings with LOW confidence (< 6/10) are excluded from this report unless `--include-low` was specified.
+Findings with LOW confidence (< 6/10) are excluded from the severity sections unless `--include-low` was specified. Unconfirmed findings are always listed, in one-line form unless `--include-low` was specified.

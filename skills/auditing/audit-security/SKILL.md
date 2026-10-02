@@ -237,7 +237,7 @@ in §5 is what tells you whether it is real. Findings are reported with a `**Tra
 format defined in §6, and your confidence score is derived from the weakest verification marker on
 the chain per §3 — it is not a separate judgement.
 
-REPORTING THRESHOLD: {If --include-low: "LOW confidence findings are included: report ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."}
+REPORTING THRESHOLD: {If --include-low: "LOW confidence findings are included: report ALL findings regardless of confidence." Otherwise: "Only include findings with confidence >= 6 (HIGH or MEDIUM). Do NOT report LOW confidence findings."} At every threshold, findings held at LOW only by `[assumed]`/`[boundary]` hops, or left untraced, are still returned under `## Unconfirmed`, per worker-brief.md.
 
 SYSTEM CONTEXT (discovered by orchestrator — use this to understand the architecture):
 {SYSTEM_CONTEXT_SUMMARY}
@@ -264,7 +264,8 @@ Read the report template from `{skill_dir}/templates/report.md` and fill it in w
 9. Preserve the **Trace**, **Affected files**, **Current controls**, **Exposure**, and implementation-specific **Fix** details from sub-agents — these are critical for actionability. Never compress a Trace to prose in consolidation; its per-hop `file:line` and status markers are the whole point.
 10. Collect the module clean-coverage notes into a single **Verified Clean** section near the end of the report, grouped by area. Include the killed candidates and the fact that killed each. A future audit reads this to avoid re-deriving the same dead ends, and a reader uses it to tell silence-because-checked from silence-because-missed.
 11. If any finding carries a `[boundary]` hop, add a short **Trace Coverage** note under the summary: which components the paths reached that were not available for tracing, and that supplying them (via `--trace-scope`) could raise those findings' confidence or severity. This makes the audit's own blind spots visible instead of implicit.
-12. Include a **Findings by Exposure** table (Public-facing / Internal-network-reachable / Auth-gated-internal, each broken out by severity) alongside the Findings by Module table — this surfaces whether Critical/High risk is concentrated on the internet edge or sitting on internal-only services, which changes remediation urgency even at equal severity.
+12. Collect every worker's `## Unconfirmed` findings, and any finding kept at LOW under rule 5, into the report's **Unconfirmed** section. They are always included, whatever the `--include-low` setting, because a finding held low only by code outside the audited scope is unverified, not disproven. Without `--include-low`, list each as one line: title, `file:line`, module, and the missing component or unfinished hop that kept it low. With `--include-low`, give each the full finding format. They are not counted in the severity tables.
+13. Include a **Findings by Exposure** table (Public-facing / Internal-network-reachable / Auth-gated-internal, each broken out by severity) alongside the Findings by Module table — this surfaces whether Critical/High risk is concentrated on the internet edge or sitting on internal-only services, which changes remediation urgency even at equal severity.
 
 **Finding format in the consolidated report:**
 ```
@@ -348,9 +349,13 @@ Write the consolidated report to `{target_path}/docs/audits/audit-security-repor
       "exploit_scenario": "...",
       "fix": "..."
     }
+  ],
+  "unconfirmed": [
+    { "title": "...", "location": "src/app.py:42", "module": "api", "held_low_by": "the missing component or unfinished hop" }
   ]
 }
 ```
+`unconfirmed` is always present (empty when there are none) and is not counted in `summary` or in the `--fail-on` check.
 
 **If `--fail-on` was specified**, after writing the report, check whether any findings exist at or above the threshold severity (critical > high > medium > low). If so, end with a prominent failure message:
 ```

@@ -23,6 +23,9 @@ Evaluate basic security practices in the application layer. This is NOT a full s
 - Every database query that reads or modifies user/tenant data should include the appropriate scope filter (e.g., ancestor key, `WHERE user_id`/`WHERE tenant_id`, partition key).
 - No handler or service should be able to accidentally access another user's — or in a multi-tenant app, another tenant's — data by omitting the scope filter.
 - In a multi-tenant system, the tenant scope must be derived from a trusted server-side source (validated session claim, or a path param that a central gate authorizes membership against) — never from a client-controllable body/query/header field used without a membership check. Enforcement should be centralized (middleware) so a new handler cannot forget it, not re-implemented per handler.
+- Ownership fields are server-set. A create or update must not accept `account_id`, `tenant_id`, `owner_id`, `user_id` or similar from the request body and store it as given; that lets a caller write records into, or as, another account.
+- An unguessable ID (a UUID) is not an access control. Every read, update and delete addressed by ID still needs an ownership or tenant check, and this matters most when the IDs appear in list responses, logs, URLs or tokens.
+- Static reference data defined in code and identical for every caller (for example a fixed role or permission catalogue) does not need user or tenant scoping. Don't FAIL this assertion for it.
 - Look for: queries that don't include user/tenant scoping, admin endpoints that allow user/tenant ID override without authorization checks, tenant id read from a request body/header for scoping, IDOR/BOLA-susceptible patterns, routes registered without the standard auth/tenant middleware. (For a deep multi-tenant isolation pass, use `/audit-security`'s `multi-tenancy` module.)
 
 ### SEC-5: Session tokens are hashed before storage
@@ -43,7 +46,8 @@ Evaluate basic security practices in the application layer. This is NOT a full s
 ### SEC-8: Dependencies are pinned and auditable
 - All dependencies should have pinned versions (not `>=` ranges in production).
 - A lock file should exist (`requirements.txt` with pinned versions, `package-lock.json`, `uv.lock`).
-- Look for: unpinned dependencies (`flask>=2.0`), missing lock files, dependencies only specified in setup.py without a lock.
+- Private package scopes are protected from dependency confusion. If the project publishes or consumes private scoped packages (`@org/...`), the scope should be claimed on the public registry, or every install path should map it to the private registry (`.npmrc` `@org:registry=...`). An unclaimed scope returns 404 "Scope not found" from `https://registry.npmjs.org/-/org/<scope>/package`.
+- Look for: unpinned dependencies (`flask>=2.0`), missing lock files, dependencies only specified in setup.py without a lock, private scopes with no registry mapping.
 
 ### SEC-9: File and resource operations are bounded
 <!-- Standards: CWE-770, OWASP API4:2023, OWASP Serverless SAS-8 -->
@@ -53,6 +57,7 @@ Evaluate basic security practices in the application layer. This is NOT a full s
 - **Request body size limits**: The framework or middleware should enforce a maximum request body size. Large payloads without limits can exhaust memory.
 - **Query result caps**: Database queries should include `LIMIT` clauses. Unbounded `SELECT *` queries on large tables are both a performance and security risk.
 - **Bulk operation limits**: Endpoints that accept arrays/lists of items for bulk create/update/delete should enforce a maximum item count per request.
+- **Caller-controlled cache keys**: A cache key built from a request header, query parameter or other caller-supplied value lets a caller bust the cache on every request (each one reaching the backing store) or grow the cache without bound. Keys should come from validated, server-derived values, and caches should have a size limit.
 - **String field length limits**: All user-provided string fields should have explicit maximum length validation (not just DB column width).
 - Look for: list endpoints without pagination or limits, bulk operations without max item counts, string fields without length limits in validation, missing `LIMIT` on SQL queries, missing request body size middleware.
 

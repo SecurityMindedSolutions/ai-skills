@@ -84,9 +84,14 @@ documentation:
   hops verified gives HIGH; anything assumed or out of scope on the
   auth/reachability segment is capped at MEDIUM.
 - **A mandatory `Breaks if:` line** names the control that would refute the finding
-  and where it was confirmed absent. A candidate whose chain breaks under that check
-  is *dropped*, not downgraded, and is recorded under **Verified Clean** so future
-  runs do not re-derive it.
+  and where it was confirmed absent. A candidate is cleared only when the breaker was
+  actually read (`[verified]`); it is then recorded under **Verified Clean** so future
+  runs do not re-derive it. A breaker that is only plausible (inferred, assumed, out of
+  scope, or a general argument like "IDs are hard to guess") lowers confidence instead,
+  and a finding held low only by out-of-scope hops is still reported as unconfirmed.
+  Nothing is dropped silently.
+- **Availability counts.** A denial-of-service or resource-exhaustion finding with a
+  concrete, repeatable trigger is reported, normally at Low or Medium.
 
 **Cross-repository tracing.** When a path leaves the target tree, into a sibling repo,
 shared library, or companion service, pass those roots with `--trace-scope` and they

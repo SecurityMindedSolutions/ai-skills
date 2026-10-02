@@ -28,6 +28,7 @@ Review the application for front-end performance best practices, bundle optimiza
 ### 4. Network Performance
 - Are API calls deduplicated (React Query, SWR, or custom caching)?
 - Is there retry logic with exponential backoff for transient failures?
+- Do API calls set a timeout (an `AbortController` signal or a client-level timeout), so a hung backend doesn't leave the UI waiting forever?
 - Are API responses cached appropriately?
 - Are requests parallelized where possible?
 - Is there a loading state strategy (skeleton screens, spinners)?

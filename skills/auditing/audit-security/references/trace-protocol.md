@@ -125,8 +125,11 @@ Rules:
 - An `[assumed]` or `[boundary]` hop **anywhere on the authorization, reachability, or
   input-control segment caps the finding at MEDIUM confidence**, regardless of how obvious it
   seems. HIGH confidence means you walked it.
-- Two or more `[assumed]` hops caps the finding at LOW confidence, which under default settings
-  means it is not reported at all.
+- Two or more `[assumed]` hops caps the finding at LOW confidence. `[boundary]` hops do not count
+  toward this: a path that leaves scope is unverified, not disproven.
+- A finding held at LOW **only** because of `[assumed]`/`[boundary]` hops is still reported, under
+  an **Unconfirmed — needs code outside the audited scope** heading, with the missing component
+  named. It is never silently dropped.
 
 ---
 
@@ -186,8 +189,14 @@ Prompts that reliably find the breaker:
 - For an inconsistency finding ("A does this, B doesn't"): read both. The difference may be
   deliberate and correct, and the reason may be in a comment on the line you did not open.
 
-**If the falsification pass breaks the chain, the finding is dropped, not downgraded.** Record it
-in the module's clean-coverage note (§7) so the next run does not re-derive it.
+**Clear a candidate only when you have READ the breaker.** If the falsification pass finds a
+concrete control that stops the chain, and you opened it (`file:line`, `[verified]`), the candidate
+is cleared: record it in the clean-coverage note (§7). If the breaker is only plausible — inferred,
+assumed, outside scope, or a general argument ("IDs are hard to guess", "callers are trusted") —
+the chain is NOT broken: keep the finding, lower its confidence, and write the unverified breaker in
+`Breaks if:`. A real defect whose impact is limited by a verified control (for example a missing
+authorization check that only needs the target's ID) is still reported, at the lower severity the
+control justifies — not cleared.
 
 ---
 
@@ -292,4 +301,4 @@ field are treated as public
 - [ ] Falsification pass done; `Breaks if:` written
 - [ ] Confidence reflects the weakest marker on the chain
 - [ ] Exploit scenario contains no step absent from the trace
-- [ ] Killed candidates recorded in clean coverage
+- [ ] Killed candidates recorded in clean coverage, each with the `[verified]` breaker that killed it

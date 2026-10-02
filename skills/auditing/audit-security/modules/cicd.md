@@ -34,6 +34,22 @@ Review CI/CD pipeline configurations for security misconfigurations, credential 
 - Are production deployments restricted to specific branches?
 - Is force-push to protected branches blocked (detectable from branch protection rules in IaC)?
 
+**3b. Template / Upstream Sync Workflows (dedicated check — do not skip)**
+<!-- Standards: CICD-SEC-1, CICD-SEC-4, CICD-SEC-3 -->
+For any workflow or script that merges, rebases or copies code from another repository or branch
+(template sync, upstream fork sync, vendored-repo update), check:
+- **Merge strategy:** `-X theirs`, `--strategy-option=theirs`, `checkout --theirs` or a plain
+  overwrite silently resolves every conflict in the source's favour, so local security fixes can be
+  reverted without anyone reviewing a conflict.
+- **Source protection:** is the source repo/branch protected (branch protection or rulesets, required
+  review)? If anyone with write access to the source can push to it, they can push into this repo. Use
+  read-only `gh api` GETs to check when available.
+- **Landing path:** does the synced code land directly on a protected branch, or open a PR that gets
+  real review? What privileged CI (write tokens, secrets, deploy jobs, package publish) does it run
+  in before review?
+An unreviewed sync from an unprotected source into a repo with privileged CI is a supply-chain
+finding, normally Low to Medium depending on what the CI can reach.
+
 ### 4. Artifact Integrity
 <!-- Standards: CICD-SEC-9, OWASP-Web-A08 -->
 - Are Docker images referenced by digest (`@sha256:...`) in deployment configs?
@@ -102,6 +118,9 @@ service.account.*\.json|credentials.*\.json
 # Lockfile usage (good pattern - verify presence)
 npm ci|pip install.*--require-hashes|pip install.*-r.*requirements
 --frozen-lockfile|--immutable
+
+# Template / upstream sync (3b)
+git (merge|pull|rebase).*(-X *theirs|--strategy-option[= ]theirs)|checkout --theirs|template.*sync|sync.*upstream|remote add (template|upstream)
 
 # Artifact integrity
 @sha256:|image.*@sha256:|digest:

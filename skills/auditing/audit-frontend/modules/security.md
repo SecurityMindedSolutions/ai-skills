@@ -46,6 +46,7 @@ NOTE: This module focuses on front-end-specific security. For comprehensive secu
 - Does `npm audit` report any high/critical vulnerabilities?
 - Are there unused dependencies that increase attack surface?
 - Is there a lockfile committed (`package-lock.json`, `yarn.lock`)?
+- If the app uses private scoped packages (`@org/...`), is the scope claimed on the public registry, or mapped to the private registry in `.npmrc` (`@org:registry=...`) for every install path? An unclaimed scope invites dependency confusion.
 
 ### 7. HTTP Security Headers (in HTML meta tags or build config)
 - Is `X-Content-Type-Options: nosniff` set?

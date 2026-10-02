@@ -146,6 +146,7 @@ unvalidated *full* URL; it's about a supposedly-safe *path fragment* being trust
 <!-- Standards: OWASP API10:2023 -->
 - Are responses from external/third-party APIs validated or typed before use (not blindly trusted)?
 - Is a timeout configured on all outbound HTTP calls (`requests.get(url, timeout=...)`)? Missing timeout = potential hang forever.
+- Shipped client libraries count too: an HTTP client (`axios.create`, `fetch`, `got`) built without a timeout in a package other services import is a missing timeout on every consumer's hot path. Report it at Low per the worker brief's AVAILABILITY FINDINGS rule.
 - Is error handling in place for external API failures (no crash-on-500, no unhandled exceptions)?
 - Is TLS verification enabled on outbound requests (no `verify=False` in production code)?
 - Are response size limits enforced when consuming external APIs (prevent memory exhaustion from oversized responses)?

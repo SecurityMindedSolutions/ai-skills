@@ -33,6 +33,16 @@ Scan package manifests for known vulnerabilities, outdated packages, and supply 
 - Typosquatting candidates (names similar to popular packages)
 - Dependency confusion: private package names that could collide with public registry packages (check `.npmrc` for registry scoping, `pip.conf` for `--extra-index-url` without `--index-url`)
 
+- **Unclaimed private scope on the public registry:** for every private package scope the repo uses
+  or publishes (`@scope/*` mapped to a private registry in `.npmrc`/`.yarnrc.yml`, a `publishConfig`
+  pointing at GitHub Packages or a private registry), check that the scope is also registered on the
+  public registry. If it isn't, anyone can register it and publish `@scope/<name>`. Any consumer that
+  lacks the scope mapping (a new developer machine, a CI job missing the `.npmrc`, a downstream
+  service) then installs the attacker's package. Evidence is a read-only
+  `curl -s https://registry.npmjs.org/-/org/<scope>/package` returning 404 "Scope not found" (and
+  `curl -s https://registry.npmjs.org/@<scope>%2f<name>` returning 404 for each published name).
+  Report at Low, or higher if consumers are shown to lack the mapping.
+
 ### 5. Dev vs Production Dependencies
 <!-- Standards: OWASP-Web-A02:2025 -->
 - Dev/test dependencies included in production builds
